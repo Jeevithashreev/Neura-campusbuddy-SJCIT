@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CampusBuddy: SJCIT</title>
+<style>
+  :root { --bg:#0f3d2e; --card:#ffffff; --ink:#1b2b24; --muted:#5b6b63;
+          --green:#1f8a5b; --red:#c8553d; --amber:#f2b33d; --grey:#5b6b63; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: Calibri, "Segoe UI", sans-serif; background:#eaf4ec; color:var(--ink); }
+  header { background:var(--bg); color:#fff; padding:16px 24px; }
+  header h1 { margin:0; font-size:24px; }
+  header p { margin:4px 0 0; color:#eaf4ec; font-size:14px; }
+  main { max-width:1100px; margin:20px auto; padding:0 16px; }
+  .counters { display:flex; gap:16px; margin-bottom:16px; flex-wrap:wrap; }
+  .counter { background:var(--card); border-radius:12px; padding:14px 20px; min-width:200px; }
+  .counter b { display:block; font-size:30px; color:var(--green); }
+  .floor { background:var(--card); border-radius:12px; padding:16px; }
+  .floor h2 { margin:0 0 4px; font-size:18px; }
+  .note { color:var(--muted); font-size:13px; margin:0 0 12px; }
+  .rooms { display:grid; grid-template-columns:repeat(5, 1fr); gap:10px; }
+  .room { border-radius:10px; color:#fff; padding:12px; min-height:150px; display:flex; flex-direction:column; }
+  .room h3 { margin:0 0 4px; font-size:16px; }
+  .room .st { font-size:13px; flex:1; }
+  .room .btns { display:flex; gap:6px; flex-wrap:wrap; }
+  .room button { border:0; border-radius:6px; padding:5px 8px; font-size:12px; cursor:pointer; }
+  .occupied { background:var(--green); }
+  .empty_lights_on { background:var(--red); }
+  .warning { background:var(--amber); color:var(--ink); }
+  .switched_off { background:var(--grey); }
+  .corridor { height:14px; background:#eaf4ec; border-radius:7px; margin:12px 0; }
+  .events { background:var(--card); border-radius:12px; padding:16px; margin-top:16px; }
+  .events h2 { margin:0 0 8px; font-size:18px; }
+  .events li { font-size:14px; margin:3px 0; }
+  .events span { color:var(--muted); margin-right:8px; }
+  .reset { margin-top:12px; }
+  .reset button { padding:8px 14px; border:0; border-radius:8px; background:var(--bg); color:#fff; cursor:pointer; }
+  @media (max-width:800px) { .rooms { grid-template-columns:repeat(2, 1fr); } }
+</style>
+</head>
+<body>
+<header>
+  <h1>CampusBuddy: SJCIT energy twin</h1>
+  <p>Step 1: rules and floor view with simulated rooms</p>
+</header>
+<main>
+  <div class="counters">
+    <div class="counter"><b id="kwh">0.000</b>kWh saved (simulated)</div>
+    <div class="counter"><b id="rs">0.00</b>rupees saved (simulated)</div>
+  </div>
+  <div class="floor">
+    <h2>Concept floor: live status</h2>
+    <p class="note" id="cfg"></p>
+    <div class="rooms" id="rooms"></div>
+    <div class="corridor"></div>
+    <p class="note">Green: occupied. Red: empty with lights on. Amber: warning, switch-off soon. Grey: switched off by the system.</p>
+  </div>
+  <div class="events"><h2>Event log</h2><ul id="events"></ul></div>
+  <div class="reset"><button onclick="post('/api/reset')">Reset demo</button></div>
+</main>
+<script>
+const LABEL = {
+  occupied: "Occupied",
+  empty_lights_on: "Empty, lights on",
+  warning: "Warning: switching off soon",
+  switched_off: "Switched off (saving power)"
+};
+
+async function post(url, body) {
+  await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
+  refresh();
+}
+
+function render(s) {
+  document.getElementById("kwh").textContent = s.saved_kwh.toFixed(3);
+  document.getElementById("rs").textContent = s.saved_rupees.toFixed(2);
+  document.getElementById("cfg").textContent =
+    `Demo timing: warning after ${s.config.warn_after}s empty, auto switch-off after ${s.config.off_after}s. ` +
+    `Savings run at 1 second = ${s.config.time_scale} seconds, at Rs ${s.config.tariff} per kWh.`;
+  document.getElementById("rooms").innerHTML = s.rooms.map(r => `
+    <div class="room ${r.status}">
+      <h3>${r.name}</h3>
+      <div class="st">${LABEL[r.status]}<br>People: ${r.persons}${r.persons === 0 && r.lights_on ? `<br>Empty for ${Math.round(r.empty_for)}s` : ""}</div>
+      <div class="btns">
+        <button onclick="post('/api/rooms/${r.id}/occupancy', {persons: ${r.persons + 1}})">+ Person</button>
+        <button onclick="post('/api/rooms/${r.id}/occupancy', {persons: 0})">Everyone leaves</button>
+        <button onclick="post('/api/rooms/${r.id}/lights', {on: ${!r.lights_on}})">Lights ${r.lights_on ? "off" : "on"}</button>
+      </div>
+    </div>`).join("");
+  document.getElementById("events").innerHTML =
+    s.events.map(e => `<li><span>${e.time}</span>${e.msg}</li>`).join("");
+}
+
+async function refresh() {
+  try { render(await (await fetch("/api/state")).json()); } catch (e) { console.log(e); }
+}
+refresh();
+setInterval(refresh, 1000);
+</script>
+</body>
+</html>
