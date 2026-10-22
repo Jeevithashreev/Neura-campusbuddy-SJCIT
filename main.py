@@ -7,6 +7,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from copilot import ask as ask_copilot
 from engine import Engine
 
 engine = Engine()
@@ -35,6 +36,10 @@ class Occupancy(BaseModel):
 
 class Lights(BaseModel):
     on: bool
+
+
+class Question(BaseModel):
+    question: str
 
 
 @app.get("/")
@@ -69,3 +74,8 @@ def set_lights(room_id: int, body: Lights):
 def reset():
     engine.reset(time.time())
     return engine.state(time.time())
+
+
+@app.post("/api/copilot")
+def copilot(body: Question):
+    return {"answer": ask_copilot(body.question, engine.state(time.time()))}
