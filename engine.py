@@ -29,7 +29,7 @@ class Engine:
         self.last_tick = now
         self.saved_kwh = 0.0
         self.events = []
-        names = ["Room 101", "Room 102", "Room 103", "Room 104", "Room 105"]
+        names = ["Admin Block", "IT Block", "Library", "Mechanical Block", "Aeronautical Dept"]
         people = [2, 0, 3, 0, 1]
         self.rooms = [Room(i + 1, n, p, now) for i, (n, p) in enumerate(zip(names, people))]
         self.log("Demo started", now)
