@@ -18,6 +18,7 @@ class Room:
         self.lights_on = True
         self.auto_off = False          # True when the SYSTEM switched it off
         self.warned = False
+        self.saved_kwh = 0.0           # energy saved by this building
         self.empty_since = None if persons > 0 else now
 
 
@@ -90,7 +91,9 @@ class Engine:
                     r.warned = True
                     self.log(f"{r.name}: warning, empty with lights on", now)
             if r.persons == 0 and not r.lights_on and r.auto_off:
-                self.saved_kwh += (r.power_w / 1000.0) * (dt * TIME_SCALE / 3600.0)
+                saved = (r.power_w / 1000.0) * (dt * TIME_SCALE / 3600.0)
+                r.saved_kwh += saved
+                self.saved_kwh += saved
 
     def status(self, r, now):
         if r.persons > 0:
@@ -107,7 +110,7 @@ class Engine:
             rooms.append({
                 "id": r.id, "name": r.name, "persons": r.persons,
                 "lights_on": r.lights_on, "status": self.status(r, now),
-                "empty_for": empty_for,
+                "empty_for": empty_for, "saved_kwh": round(r.saved_kwh, 3),
             })
         return {
             "rooms": rooms,
