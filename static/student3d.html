@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>3D Campus Guide: SJCIT</title>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<style>
+  :root { --g:#1f8a5b; --dk:#0f3d2e; --bg:#eaf4ec; --tx:#333; --mut:#555; --card:#fff; }
+  html, body { height:100%; margin:0; font-family: Calibri, "Segoe UI", sans-serif; background:var(--bg); color:var(--tx); }
+  .wrap { display:grid; grid-template-columns:360px 1fr; height:100%; }
+  .side { padding:16px; overflow:auto; }
+  .side h1 { margin:0 0 2px; color:var(--g); font-size:24px; }
+  .links { margin:0 0 12px; font-size:14px; }
+  input[type=text] { width:100%; box-sizing:border-box; padding:12px; font-size:16px; border:1px solid #bbb; border-radius:8px; }
+  #chips { margin:8px 0 0; display:flex; flex-wrap:wrap; gap:6px; }
+  .chip { border:1px solid #b5d3c1; background:#fff; color:var(--dk); border-radius:999px; padding:4px 10px; font-size:12px; cursor:pointer; }
+  .chip.on { background:var(--g); color:#fff; border-color:var(--g); }
+  #msg { background:var(--dk); color:#fff; border-radius:10px; padding:12px 14px; margin:12px 0 8px; font-size:15px; min-height:20px; }
+  #info { display:none; background:#d7efe1; border-radius:10px; padding:8px 12px; font-size:13px; margin-bottom:8px; }
+  #info .row { display:flex; gap:8px; margin-top:6px; }
+  #info button { border:0; border-radius:8px; padding:6px 10px; font-size:13px; cursor:pointer; background:var(--dk); color:#fff; }
+  #info button.alt { background:#fff; color:var(--dk); border:1px solid var(--dk); }
+  #status { font-size:12px; color:var(--mut); margin:0 0 8px; line-height:1.6; }
+  .dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:5px; background:#999; }
+  .card { background:var(--card); border-radius:10px; padding:10px 14px; margin-top:8px; box-shadow:0 1px 4px rgba(0,0,0,.15); }
+  .card b { color:var(--dk); font-size:17px; }
+  .card div { color:var(--mut); margin:3px 0 8px; font-size:14px; }
+  .card button, .pbtn { border:0; border-radius:8px; background:var(--g); color:#fff; padding:7px 12px; font-size:14px; cursor:pointer; }
+  .stl { font-size:12px; }
+  .stl i { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:4px; }
+  .opts { font-size:13px; margin-top:6px; }
+  .opts label { display:block; margin-top:6px; }
+  .opts select, .opts button { font-size:13px; }
+  .opts button { margin-top:8px; border:1px solid #9bb; background:#fff; border-radius:8px; padding:4px 8px; cursor:pointer; }
+  .legend { font-size:12px; margin-top:12px; }
+  .legend span { display:inline-block; width:10px; height:10px; border-radius:50%; margin:0 4px 0 8px; }
+  #map { height:100%; }
+  .robot { position:relative; font-size:38px; line-height:38px; width:38px; height:38px; filter:drop-shadow(0 2px 3px rgba(0,0,0,.7)); }
+  .robot.real { filter:drop-shadow(0 0 7px #5be3a1) drop-shadow(0 2px 3px rgba(0,0,0,.7)); }
+  .robot .arrow { position:absolute; left:12px; top:-16px; width:0; height:0; border-left:7px solid transparent;
+    border-right:7px solid transparent; border-bottom:14px solid #5be3a1; transform-origin:7px 35px; }
+  .tag { background:rgba(15,61,46,.85); color:#fff; padding:2px 7px; border-radius:6px; font-size:12px; white-space:nowrap; pointer-events:none; }
+  .pop button { margin-top:6px; }
+  @media (max-width:800px) {
+    .wrap { grid-template-columns:1fr; grid-template-rows:auto 60vh; height:auto; }
+    #map { height:60vh; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="side">
+    <h1>3D Campus Guide</h1>
+    <p class="links"><a href="/static/home.html">Home</a> | <a href="/static/student.html">2D guide</a> | <a href="/static/map.html">Energy map</a></p>
+    <input type="text" id="q" placeholder="Where do you want to go? e.g. Principal, Fee, AIML" oninput="render()" onkeydown="if(event.key==='Enter') goFirst()">
+    <div id="chips"></div>
+    <div id="msg" aria-live="polite">Hi! Search a place, or tap a building on the map, then press "Take me there".</div>
+    <div id="info">
+      <div id="infotxt"></div>
+      <div class="row"><button id="bstop" class="alt" onclick="stopGuide()">Stop</button><button id="breplay" onclick="replay()">Replay</button></div>
+    </div>
+    <div id="status">
+      <span class="dot" id="d1"></span><span id="s1">Loading real buildings…</span><br>
+      <span class="dot" id="d2"></span><span id="s2">Robot: simulated</span>
+    </div>
+    <div class="opts">
+      <label><input type="checkbox" id="speak"> Speak the directions (needs sound)</label>
+      <label><input type="checkbox" id="follow" checked> Camera follows the robot</label>
+      <label>Simulation speed
+        <select id="spd"><option value="demo">Demo (fast)</option><option value="walk">Real walking pace</option></select></label>
+      <button onclick="reloadMapData()">Reload real map data</button>
+    </div>
+    <div class="legend">Block colour (live energy status):
+      <span style="background:#1f8a5b"></span>occupied
+      <span style="background:#c8553d"></span>empty, lights on
+      <span style="background:#f2b33d"></span>warning
+      <span style="background:#5b6b63"></span>switched off</div>
+    <div id="list"></div>
+  </div>
+  <div id="map"></div>
+</div>
+
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script>
+/* ================= CONFIG ================= */
+// Where the robot starts. Placeholder = Admin Block. Change to your gate or kiosk.
+const START = [13.395922, 77.727883];
+
+// Real robot (optional). Your robot server should expose:
+//   GET  /api/robot        -> { online:true, lat, lng, heading }
+//   POST /api/robot/guide  <- { place, target:[lat,lng], route:[[lat,lng],...] }
+//   POST /api/robot/stop   <- {}
+const ROBOT_API = "/api/robot", ROBOT_GUIDE_API = "/api/robot/guide", ROBOT_STOP_API = "/api/robot/stop";
+const AVOID_STEPS = true;      // wheeled robot: do not route over steps
+const OFF_ROUTE_M = 25;        // real robot farther than this from the route -> re-plan
+const WALK_MPS = 1.3;          // used for the time estimate
+
+// Area to download real OpenStreetMap data for: south, west, north, east
+const BBOX = [13.3932, 77.7255, 13.3978, 77.7332];
+const OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
+
+// Real positions from Google Maps. "door" is optional: put the real entrance [lat,lng] to make the robot stop exactly there.
+const BLOCKS = {
+  admin:   { id: 1, pos: [13.395922, 77.727883], name: "Admin Block",       h: 14, door: null },
+  it:      { id: 2, pos: [13.395160, 77.727830], name: "IT Block",          h: 10, door: null },
+  library: { id: 3, pos: [13.395299, 77.729189], name: "Library",           h: 8,  door: null },
+  mech:    { id: 4, pos: [13.395294, 77.730605], name: "Mechanical Block",  h: 8,  door: null },
+  aero:    { id: 5, pos: [13.395389, 77.731095], name: "Aeronautical Dept", h: 8,  door: null }
+};
+const PLACES = [
+  { name: "Principal's chamber", block: "admin", detail: "1st floor, last room" },
+  { name: "Fee counter", block: "admin", detail: "near the Principal's chamber" },
+  { name: "Maths department", block: "admin", detail: "2nd floor, last room" },
+  { name: "AIML department", block: "it", detail: "ground floor" },
+  { name: "Gradient Hall", block: "it", detail: "ground floor (hackathon venue)" },
+  { name: "Synergic lab", block: "it", detail: "ground floor" },
+  { name: "CS department", block: "it", detail: "1st floor" },
+  { name: "Admin Block", block: "admin", detail: "main administrative block" },
+  { name: "IT Block", block: "it", detail: "main block" },
+  { name: "Library", block: "library", detail: "main block" },
+  { name: "Mechanical Block", block: "mech", detail: "main block" },
+  { name: "Aeronautical Dept", block: "aero", detail: "main block" }
+];
+const COLORS = { occupied:"#1f8a5b", empty_lights_on:"#c8553d", warning:"#f2b33d", switched_off:"#5b6b63" };
+const STATUS_TEXT = { occupied:"Occupied", empty_lights_on:"Empty, lights on", warning:"Warning", switched_off:"Switched off" };
+
+/* ================= GEO HELPERS ================= */
+const R = 6371000, rad = d => d * Math.PI / 180, deg = r => r * 180 / Math.PI;
+function dist(a, b) {
+  const dLat = rad(b[0]-a[0]), dLng = rad(b[1]-a[1]);
+  const h = Math.sin(dLat/2)**2 + Math.cos(rad(a[0])) * Math.cos(rad(b[0])) * Math.sin(dLng/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+function bearing(a, b) {
+  const y = Math.sin(rad(b[1]-a[1])) * Math.cos(rad(b[0]));
+  const x = Math.cos(rad(a[0])) * Math.sin(rad(b[0])) - Math.sin(rad(a[0])) * Math.cos(rad(b[0])) * Math.cos(rad(b[1]-a[1]));
+  return (deg(Math.atan2(y, x)) + 360) % 360;
+}
+function projectOnSeg(p, a, b) { // nearest point on segment a-b to p (all [lat,lng])
+  const kx = 111320 * Math.cos(rad(p[0])), ky = 110540;
+  const ax = (a[1]-p[1])*kx, ay = (a[0]-p[0])*ky, bx = (b[1]-p[1])*kx, by = (b[0]-p[0])*ky;
+  const dx = bx-ax, dy = by-ay, l2 = dx*dx + dy*dy;
+  let t = l2 ? -(ax*dx + ay*dy) / l2 : 0; t = Math.max(0, Math.min(1, t));
+  return { point: [a[0] + (b[0]-a[0])*t, a[1] + (b[1]-a[1])*t], d: Math.hypot(ax + t*dx, ay + t*dy) };
+}
+function inRing(pt, ring) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i][0], yi = ring[i][1], xj = ring[j][0], yj = ring[j][1];
+    if ((yi > pt[0]) !== (yj > pt[0]) && pt[1] < (xj-xi) * (pt[0]-yi) / (yj-yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+function centroid(ring) {
+  let la = 0, ln = 0; const n = ring.length - 1 || 1;
+  for (let i = 0; i < n; i++) { ln += ring[i][0]; la += ring[i][1]; }
+  return [la / n, ln / n];
+}
+const smoothAngle = (cur, target) => cur + (((target - cur + 540) % 360) - 180) * 0.08;
+class MinHeap {
+  constructor() { this.a = []; }
+  get size() { return this.a.length; }
+  push(p, v) { const a = this.a; a.push([p, v]); let i = a.length - 1;
+    while (i > 0) { const j = (i-1) >> 1; if (a[j][0] <= a[i][0]) break; [a[i], a[j]] = [a[j], a[i]]; i = j; } }
+  pop() { const a = this.a, top = a[0], last = a.pop();
+    if (a.length) { a[0] = last; let i = 0;
+      for (;;) { let l = 2*i+1, r = l+1, m = i;
+        if (l < a.length && a[l][0] < a[m][0]) m = l;
+        if (r < a.length && a[r][0] < a[m][0]) m = r;
+        if (m === i) break; [a[i], a[m]] = [a[m], a[i]]; i = m; } }
+    return top[1]; }
+}
+
+/* ================= REAL DATA (OpenStreetMap) ================= */
+const CACHE_KEY = "sjcit_osm_v2", CACHE_DAYS = 7;
+let buildings = [], graph = new Map(), edges = [], status = {}, dataReal = false, destBlock = "";
+
+async function loadOSM() {
+  try {
+    const c = JSON.parse(localStorage.getItem(CACHE_KEY));
+    if (c && c.data && Date.now() - c.t < CACHE_DAYS * 864e5) return c.data;
+  } catch (e) {}
+  const q = `[out:json][timeout:30];(way["building"](${BBOX});` +
+    `way["highway"~"footway|path|pedestrian|service|residential|unclassified|track|steps|living_street|tertiary|secondary|cycleway"](${BBOX}););out geom;`;
+  for (const url of OVERPASS) {
+    try {
+      const r = await fetch(url, { method: "POST", body: "data=" + encodeURIComponent(q) });
+      if (!r.ok) continue;
+      const j = await r.json();
+      if (j.elements && j.elements.length) {
+        try { localStorage.setItem(CACHE_KEY, JSON.stringify({ t: Date.now(), data: j })); } catch (e) {}
+        return j;
+      }
+    } catch (e) { console.log("overpass failed", url, e); }
+  }
+  return null;
+}
+function reloadMapData() { try { localStorage.removeItem(CACHE_KEY); } catch (e) {} location.reload(); }
+
+function buildFromOSM(data) {
+  const key = p => p[0].toFixed(6) + "," + p[1].toFixed(6);
+  const add = p => { const k = key(p); if (!graph.has(k)) graph.set(k, { p, adj: [] }); return k; };
+  for (const w of data.elements) {
+    if (!w.geometry || w.geometry.length < 2) continue;
+    const t = w.tags || {};
+    if (t.building) {
+      const ring = w.geometry.map(g => [g.lon, g.lat]);
+      if (ring.length < 4) continue;
+      let h = parseFloat(t.height);
+      if (!h && t["building:levels"]) h = parseFloat(t["building:levels"]) * 3.5;
+      buildings.push({ ring, height: h || 7, block: null, center: centroid(ring) });
+    } else if (t.highway) {
+      if (t.access === "private" || t.foot === "no") continue;
+      if (AVOID_STEPS && (t.highway === "steps" || t.wheelchair === "no")) continue;
+      const pts = w.geometry.map(g => [g.lat, g.lon]);
+      for (let i = 0; i < pts.length - 1; i++) {
+        const a = add(pts[i]), b = add(pts[i+1]), d = dist(pts[i], pts[i+1]);
+        graph.get(a).adj.push({ k: b, w: d }); graph.get(b).adj.push({ k: a, w: d });
+        edges.push({ a, b, pa: pts[i], pb: pts[i+1] });
+      }
+    }
+  }
+}
+const fallbackBox = c => { const dx = 0.000185, dy = 0.00011;
+  return [[c[1]-dx, c[0]-dy], [c[1]+dx, c[0]-dy], [c[1]+dx, c[0]+dy], [c[1]-dx, c[0]+dy], [c[1]-dx, c[0]-dy]]; };
+
+function matchBlocks() {
+  for (const key in BLOCKS) {
+    const pos = BLOCKS[key].pos;
+    let best = buildings.find(b => !b.block && inRing(pos, b.ring));
+    if (!best) { let bd = 60; for (const b of buildings) { if (b.block) continue; const d = dist(pos, b.center); if (d < bd) { bd = d; best = b; } } }
+    if (best) { best.block = key; best.height = Math.max(best.height, BLOCKS[key].h * 0.6); }
+    else buildings.push({ ring: fallbackBox(pos), height: BLOCKS[key].h, block: key, center: pos });
+  }
+}
+function geo() {
+  return { type: "FeatureCollection", features: buildings.map(b => ({
+    type: "Feature",
+    properties: { height: b.height, block: b.block || "", dest: b.block && b.block === destBlock ? 1 : 0,
+      color: b.block ? (COLORS[status[BLOCKS[b.block].id]] || "#7a9a8a") : "#b9c7bf" },
+    geometry: { type: "Polygon", coordinates: [b.ring] }
+  })) };
+}
+const blockCenter = k => (buildings.find(x => x.block === k) || { center: BLOCKS[k].pos }).center;
+
+/* ================= ROUTING (snapped A*) ================= */
+function snapToEdge(p, limit) {
+  let best = null, bd = limit;
+  for (const e of edges) { const s = projectOnSeg(p, e.pa, e.pb); if (s.d < bd) { bd = s.d; best = { point: s.point, d: s.d, a: e.a, b: e.b }; } }
+  return best;
+}
+function findPath(sS, sE) {
+  const virt = new Map([["__S", sS.point], ["__E", sE.point]]), extra = new Map();
+  const link = (u, v, w) => { if (!extra.has(u)) extra.set(u, []); extra.get(u).push({ k: v, w }); };
+  for (const [vk, s] of [["__S", sS], ["__E", sE]])
+    for (const end of [s.a, s.b]) { const w = dist(s.point, graph.get(end).p); link(vk, end, w); link(end, vk, w); }
+  if ((sS.a === sE.a && sS.b === sE.b) || (sS.a === sE.b && sS.b === sE.a)) {
+    const w = dist(sS.point, sE.point); link("__S", "__E", w); link("__E", "__S", w);
+  }
+  const pos = k => virt.get(k) || graph.get(k).p;
+  const nb = k => (graph.has(k) ? graph.get(k).adj : []).concat(extra.get(k) || []);
+  const g = new Map([["__S", 0]]), prev = new Map(), closed = new Set(), heap = new MinHeap();
+  heap.push(dist(pos("__S"), pos("__E")), "__S");
+  while (heap.size) {
+    const u = heap.pop(); if (u === "__E") break; if (closed.has(u)) continue; closed.add(u);
+    for (const e of nb(u)) {
+      const ng = g.get(u) + e.w;
+      if (ng < (g.has(e.k) ? g.get(e.k) : Infinity)) { g.set(e.k, ng); prev.set(e.k, u); heap.push(ng + dist(pos(e.k), pos("__E")), e.k); }
+    }
+  }
+  if (!prev.has("__E")) return null;
+  const out = []; let c = "__E"; while (c) { out.push(pos(c)); c = prev.get(c); }
+  return out.reverse();
+}
+const dedupe = r => r.filter((p, i) => i === 0 || dist(r[i-1], p) > 0.5);
+
+function planRoute(blockKey, origin) {
+  const b = buildings.find(x => x.block === blockKey), door = BLOCKS[blockKey].door;
+  const center = b ? b.center : BLOCKS[blockKey].pos;
+  if (edges.length) {
+    const sS = snapToEdge(origin, 150);
+    let sE = null, entrance = null;
+    if (door) { sE = snapToEdge(door, 150); entrance = door; }
+    else if (b) { let bd = 1e9;
+      for (const v of b.ring) { const q = [v[1], v[0]], s = snapToEdge(q, 200); if (s && s.d < bd) { bd = s.d; sE = s; entrance = q; } } }
+    if (sS && sE) {
+      const path = findPath(sS, sE);
+      if (path) return { route: dedupe([origin, ...path, entrance || sE.point]), onPaths: true, center, entrance: entrance || sE.point };
+    }
+  }
+  let target = door;
+  if (!target && b) { let bd = 1e9; for (const v of b.ring) { const q = [v[1], v[0]], d = dist(origin, q); if (d < bd) { bd = d; target = q; } } }
+  target = target || BLOCKS[blockKey].pos;
+  return { route: [origin, target], onPaths: false, center, entrance: target };
+}
+function cumulative(route) { const c = [0]; for (let i = 1; i < route.length; i++) c.push(c[i-1] + dist(route[i-1], route[i])); return c; }
+function pointAt(route, cum, d) {
+  const n = route.length;
+  if (d >= cum[n-1]) return { p: route[n-1], brg: bearing(route[n-2] || route[0], route[n-1]), i: n - 1 };
+  let i = 1; while (cum[i] < d) i++;
+  const f = (d - cum[i-1]) / ((cum[i] - cum[i-1]) || 1), a = route[i-1], b = route[i];
+  return { p: [a[0] + (b[0]-a[0])*f, a[1] + (b[1]-a[1])*f], brg: bearing(a, b), i };
+}
+function distToRoute(p, route) { let m = 1e9; for (let i = 1; i < route.length; i++) m = Math.min(m, projectOnSeg(p, route[i-1], route[i]).d); return m; }
+function progressOnRoute(p, route, cum) {
+  let bd = 1e9, bp = 0;
+  for (let i = 1; i < route.length; i++) { const s = projectOnSeg(p, route[i-1], route[i]);
+    if (s.d < bd) { bd = s.d; bp = cum[i-1] + dist(route[i-1], s.point); } }
+  return bp;
+}
+function instructions(route, cum, placeName) {
+  const total = cum[cum.length-1];
+  const out = [{ at: 0, text: `Follow me! Walking ${Math.round(total)} metres to ${placeName}.` }];
+  let lastAt = 0;
+  for (let i = 1; i < route.length - 1; i++) {
+    const turn = ((bearing(route[i], route[i+1]) - bearing(route[i-1], route[i]) + 540) % 360) - 180;
+    if (Math.abs(turn) > 40 && cum[i] - lastAt > 10) {
+      out.push({ at: Math.max(0, cum[i] - 5), text: `Turn ${turn > 0 ? "right" : "left"} here. ${Math.round(total - cum[i])} metres to go.` });
+      lastAt = cum[i];
+    }
+  }
+  return out;
+}
+
+/* ================= MAP ================= */
+const map = new maplibregl.Map({
+  container: "map",
+  style: { version: 8,
+    sources: { sat: { type: "raster", tileSize: 256, maxzoom: 19,
+      tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
+      attribution: "Imagery: Esri, Maxar, Earthstar Geographics | Buildings & paths: &copy; OpenStreetMap contributors" } },
+    layers: [{ id: "sat", type: "raster", source: "sat" }] },
+  center: [77.7295, 13.3955], zoom: 17, pitch: 60, bearing: -20
+});
+map.addControl(new maplibregl.NavigationControl());
+const emptyLine = { type: "Feature", geometry: { type: "LineString", coordinates: [] } };
+const toLine = pts => ({ type: "Feature", geometry: { type: "LineString", coordinates: pts.map(p => [p[1], p[0]]) } });
+let mapReady = false;
+
+map.on("load", async () => {
+  map.addSource("blocks", { type: "geojson", data: geo() });
+  map.addSource("route-casing", { type: "geojson", data: emptyLine });
+  map.addLayer({ id: "route-casing", type: "line", source: "route-casing", layout: { "line-cap": "round", "line-join": "round" },
+    paint: { "line-color": "#0f3d2e", "line-width": 9 } });
+  map.addLayer({ id: "route", type: "line", source: "route-casing", layout: { "line-cap": "round", "line-join": "round" },
+    paint: { "line-color": "#5be3a1", "line-width": 5 } });
+  map.addSource("done", { type: "geojson", data: emptyLine });
+  map.addLayer({ id: "done", type: "line", source: "done", layout: { "line-cap": "round" }, paint: { "line-color": "#ffffff", "line-width": 3, "line-opacity": 0.8 } });
+  map.addLayer({ id: "blocks3d", type: "fill-extrusion", source: "blocks", paint: {
+    "fill-extrusion-color": ["get", "color"], "fill-extrusion-height": ["get", "height"],
+    "fill-extrusion-base": 0, "fill-extrusion-opacity": 0.88, "fill-extrusion-vertical-gradient": true } });
+  map.addLayer({ id: "dest-outline", type: "line", source: "blocks", filter: ["==", ["get", "dest"], 1],
+    paint: { "line-color": "#ffffff", "line-width": 4 } });
+
+  map.on("mouseenter", "blocks3d", () => map.getCanvas().style.cursor = "pointer");
+  map.on("mouseleave", "blocks3d", () => map.getCanvas().style.cursor = "");
+  map.on("click", "blocks3d", e => {
+    const f = e.features && e.features[0], k = f && f.properties.block;
+    if (!k) return;
+    const st = STATUS_TEXT[status[BLOCKS[k].id]] || "No live data";
+    infoPopup.setLngLat(e.lngLat).setHTML(`<div class="pop"><b>${BLOCKS[k].name}</b><br>${st}<br>
+      <button class="pbtn" onclick="goBlock('${k}')">Take me there</button></div>`).addTo(map);
+  });
+  mapReady = true;
+  await initData();
+  refresh(); setInterval(refresh, 1000);
+  pollRobot(); setInterval(pollRobot, 1000);
+});
+const infoPopup = new maplibregl.Popup({ offset: 12 });
+
+async function initData() {
+  const data = await loadOSM();
+  if (data) { buildFromOSM(data); dataReal = buildings.length > 0; }
+  matchBlocks();
+  map.getSource("blocks").setData(geo());
+  for (const k in BLOCKS) {
+    const el = document.createElement("div"); el.className = "tag"; el.textContent = BLOCKS[k].name;
+    const c = blockCenter(k);
+    new maplibregl.Marker({ element: el, offset: [0, -30] }).setLngLat([c[1], c[0]]).addTo(map);
+  }
+  document.getElementById("d1").style.background = dataReal ? "#1f8a5b" : "#f2b33d";
+  document.getElementById("s1").textContent = dataReal
+    ? `Real buildings: ${buildings.length}, mapped path segments: ${edges.length}`
+    : "Real map data not loaded (offline?). Using approximate boxes.";
+}
+async function refresh() {
+  try {
+    const s = await (await fetch("/api/state")).json();
+    s.rooms.forEach(r => status[r.id] = r.status);
+  } catch (e) { /* energy server not reachable: keep last colours */ }
+  if (mapReady) map.getSource("blocks").setData(geo());
+  render(true);
+}
+
+/* ================= ROBOT (real + simulated) ================= */
+const robotEl = document.createElement("div"); robotEl.className = "robot";
+robotEl.innerHTML = '<span class="arrow"></span>🤖';
+const arrowEl = robotEl.querySelector(".arrow");
+const robot = new maplibregl.Marker({ element: robotEl }).setLngLat([START[1], START[0]]).addTo(map);
+const popup = new maplibregl.Popup({ offset: 24, closeButton: false });
+const setHeading = h => { arrowEl.style.transform = `rotate(${h - map.getBearing()}deg)`; };
+let anim = 0, real = { online: false, p: null, heading: 0 }, guiding = null, lastGo = null, offCount = 0, prevReal = null;
+
+function say(text) {
+  document.getElementById("msg").textContent = text;
+  if (document.getElementById("speak").checked && "speechSynthesis" in window) {
+    speechSynthesis.cancel(); speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+  }
+}
+function showInfo(plan, total) {
+  const mins = Math.max(1, Math.round(total / WALK_MPS / 60));
+  document.getElementById("infotxt").textContent =
+    `${Math.round(total)} m, about ${mins} min walk, ${plan.onPaths ? "along mapped footpaths" : "straight line (no mapped path)"}.`;
+  document.getElementById("info").style.display = "block";
+}
+function arrive(p, t) {
+  const text = `We have arrived at the ${BLOCKS[p.block].name}. ${p.name}: ${p.detail}.`;
+  say(text);
+  popup.setLngLat([t[1], t[0]]).setText(text).addTo(map);
+  map.easeTo({ center: [t[1], t[0]], zoom: 18.3, pitch: 60, duration: 1500 });
+  guiding = null;
+}
+function setDest(k) { destBlock = k; if (mapReady) map.getSource("blocks").setData(geo()); }
+
+function stopGuide() {
+  anim++; guiding = null;
+  map.getSource("route-casing").setData(emptyLine); map.getSource("done").setData(emptyLine);
+  popup.remove(); setDest(""); document.getElementById("info").style.display = "none";
+  if (real.online) fetch(ROBOT_STOP_API, { method: "POST" }).catch(() => {});
+  say("Guide stopped. Where would you like to go?");
+}
+function replay() { if (lastGo) go(lastGo.i); }
+
+function go(i, originOverride) {
+  if (!mapReady) return;
+  const p = PLACES[i], id = ++anim;
+  lastGo = { i }; popup.remove(); infoPopup.remove(); guiding = null; offCount = 0;
+  setDest(p.block);
+  const origin = originOverride || (real.online ? real.p : START);
+  const plan = planRoute(p.block, origin), route = plan.route, cum = cumulative(route), total = cum[cum.length-1];
+  const steps = instructions(route, cum, p.name);
+  if (!plan.onPaths && edges.length) steps[0].text += " (No mapped footpath found, going straight.)";
+  map.getSource("route-casing").setData(toLine(route)); map.getSource("done").setData(emptyLine);
+  showInfo(plan, total);
+  if (!originOverride) {
+    const b = new maplibregl.LngLatBounds(); route.forEach(q => b.extend([q[1], q[0]]));
+    map.fitBounds(b, { padding: 120, maxZoom: 18.3, pitch: 60, duration: 1200 });
+  }
+  if (total < 8) { arrive(p, plan.center); return; }
+
+  // REAL robot: send the route, then follow its live position
+  if (real.online) {
+    fetch(ROBOT_GUIDE_API, { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ place: p.name, target: plan.entrance, route }) }).catch(() => {});
+    guiding = { i, route, cum, steps, next: 1, target: plan.entrance, place: p, center: plan.center };
+    say(steps[0].text);
+    return;
+  }
+
+  // Simulated robot walking the same route
+  robot.setLngLat([START[1], START[0]]);
+  const walk = document.getElementById("spd").value === "walk";
+  const speed = walk ? WALK_MPS : Math.max(14, total / 14), t0 = performance.now() + (originOverride ? 0 : 1300);
+  let next = 0, bear = map.getBearing();
+  function step(now) {
+    if (id !== anim) return;
+    const d = Math.min(total, Math.max(0, (now - t0) / 1000 * speed)), cur = pointAt(route, cum, d);
+    robot.setLngLat([cur.p[1], cur.p[0]]); setHeading(cur.brg);
+    map.getSource("done").setData(toLine([...route.slice(0, cur.i), cur.p]));
+    while (next < steps.length && d >= steps[next].at) { say(steps[next].text); next++; }
+    if (now > t0 && document.getElementById("follow").checked) {
+      bear = smoothAngle(bear, cur.brg);
+      map.jumpTo({ center: [cur.p[1], cur.p[0]], bearing: bear, zoom: 18.6, pitch: 62 });
+    }
+    if (d < total) requestAnimationFrame(step); else arrive(p, plan.center);
+  }
+  requestAnimationFrame(step);
+}
+function goBlock(k) {
+  const i = PLACES.findIndex(x => x.name === BLOCKS[k].name);
+  if (i >= 0) go(i);
+}
+
+async function pollRobot() {
+  try {
+    const j = await (await fetch(ROBOT_API, { cache: "no-store" })).json();
+    if (j && j.online && typeof j.lat === "number") {
+      const p = [j.lat, j.lng];
+      let h = typeof j.heading === "number" ? j.heading : (prevReal && dist(prevReal, p) > 0.3 ? bearing(prevReal, p) : real.heading);
+      prevReal = p; real = { online: true, p, heading: h };
+      robot.setLngLat([j.lng, j.lat]); robotEl.classList.add("real"); setHeading(h);
+      if (guiding) trackRealRobot();
+    } else real.online = false;
+  } catch (e) { real.online = false; }
+  if (!real.online) robotEl.classList.remove("real");
+  document.getElementById("d2").style.background = real.online ? "#1f8a5b" : "#999";
+  document.getElementById("s2").textContent = real.online ? "Robot: REAL robot connected" : "Robot: simulated";
+}
+function trackRealRobot() {
+  const g = guiding, prog = progressOnRoute(real.p, g.route, g.cum);
+  if (document.getElementById("follow").checked)
+    map.easeTo({ center: [real.p[1], real.p[0]], duration: 900, bearing: real.heading || map.getBearing() });
+  while (g.next < g.steps.length && prog >= g.steps[g.next].at) { say(g.steps[g.next].text); g.next++; }
+  if (dist(real.p, g.target) < 12) { arrive(g.place, g.center); return; }
+  // re-plan if the robot has left the route
+  offCount = distToRoute(real.p, g.route) > OFF_ROUTE_M ? offCount + 1 : 0;
+  if (offCount >= 3) { say("You went off the path. Finding a new way…"); go(g.i, real.p); }
+}
+
+/* ================= SEARCH UI ================= */
+let filterBlock = "";
+function chips() {
+  const items = [["", "All"], ...Object.keys(BLOCKS).map(k => [k, BLOCKS[k].name])];
+  document.getElementById("chips").innerHTML = items.map(([k, n]) =>
+    `<button class="chip ${filterBlock === k ? "on" : ""}" onclick="filterBlock='${k}';chips();render()">${n}</button>`).join("");
+}
+function hits() {
+  const toks = document.getElementById("q").value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  return PLACES.map((p, i) => ({ p, i })).filter(x => {
+    if (filterBlock && x.p.block !== filterBlock) return false;
+    const hay = (x.p.name + " " + x.p.detail + " " + BLOCKS[x.p.block].name).toLowerCase();
+    return toks.every(t => hay.includes(t));
+  });
+}
+function goFirst() { const h = hits(); if (h.length) go(h[0].i); }
+let lastList = "";
+function render(quiet) {
+  const h = hits();
+  const html = h.length ? h.map(x => {
+    const s = status[BLOCKS[x.p.block].id];
+    const st = s ? `<span class="stl"><i style="background:${COLORS[s]}"></i>${STATUS_TEXT[s]}</span>` : "";
+    return `<div class="card"><b>${x.p.name}</b><div>${BLOCKS[x.p.block].name}, ${x.p.detail}<br>${st}</div>
+      <button onclick="go(${x.i})">Take me there</button></div>`;
+  }).join("") : `<div class="card">No match. Try another word.</div>`;
+  if (quiet && html === lastList) return;
+  lastList = html; document.getElementById("list").innerHTML = html;
+}
+chips(); render();
+</script>
+</body>
+</html>
