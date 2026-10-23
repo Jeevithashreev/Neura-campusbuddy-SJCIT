@@ -8,7 +8,6 @@
     ["Events", "/static/events.html"],
     ["Find a place", "/static/student.html"],
     ["Report a problem", "/static/report.html"],
-    ["Report a problem", "/static/report.html"],
     ["Campus map", "/static/map.html"],
     ["ADMIN MODE"],
     ["Dashboard", "/static/admin.html"],
