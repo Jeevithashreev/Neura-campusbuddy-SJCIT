@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CampusBuddy: Admin Inbox</title>
+<style>
+  :root { --bg:#0f3d2e; --ink:#1b2b24; --muted:#5b6b63; --green:#1f8a5b; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:Calibri,"Segoe UI",sans-serif; background:#eaf4ec; color:var(--ink); }
+  header { background:var(--bg); color:#fff; padding:14px 24px; }
+  header h1 { margin:0; font-size:22px; }
+  main { max-width:900px; margin:18px auto; padding:0 16px; }
+  h2 { font-size:18px; margin:20px 0 8px; }
+  .card { background:#fff; border-radius:12px; padding:14px 18px; margin-bottom:12px; }
+  .meta { color:var(--muted); font-size:14px; margin:2px 0; }
+  input, select { padding:8px; font-size:14px; margin:3px 6px 3px 0; }
+  button { padding:8px 14px; border:0; border-radius:8px; background:var(--bg); color:#fff; cursor:pointer; font-size:14px; }
+  .tag { display:inline-block; border-radius:10px; padding:2px 10px; font-size:12px; font-weight:bold; color:#fff; background:var(--green); margin-left:6px; }
+  .tag.open { background:#c8553d; } .tag.ended { background:var(--muted); }
+  .cm { border-left:3px solid #cfe0d4; padding-left:10px; margin:6px 0; font-size:14px; }
+  details summary { cursor:pointer; color:var(--green); font-size:14px; margin-top:6px; }
+</style>
+</head>
+<body>
+<header><h1>CampusBuddy: Admin Inbox</h1></header>
+<main>
+  <h2>Create an event</h2>
+  <div class="card">
+    <input id="t" placeholder="Title">
+    <input id="p" placeholder="Place (e.g. Library)">
+    <input id="s" type="number" value="5" min="0" style="width:90px" title="Starts in (minutes)">
+    <input id="d" type="number" value="30" min="1" style="width:90px" title="Duration (minutes)">
+    <input id="desc" placeholder="Description" style="width:100%">
+    <div class="meta">Number boxes: starts in (minutes), then duration (minutes).</div>
+    <button onclick="createEvent()">Create event</button>
+    <span id="cmsg" class="meta"></span>
+  </div>
+
+  <h2>Problem reports from students</h2>
+  <div id="reports">Loading...</div>
+
+  <h2>Events, registrations and feedback</h2>
+  <div id="events">Loading...</div>
+</main>
+<script>
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+async function post(url, body) {
+  const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.detail || "Something went wrong");
+  return d;
+}
+
+async function createEvent() {
+  const out = document.getElementById("cmsg");
+  try {
+    await post("/api/events", {
+      title: document.getElementById("t").value,
+      place: document.getElementById("p").value,
+      start_in_min: parseFloat(document.getElementById("s").value) || 0,
+      duration_min: parseInt(document.getElementById("d").value) || 30,
+      description: document.getElementById("desc").value
+    });
+    out.textContent = "Event created.";
+    load();
+  } catch (e) { out.textContent = e.message; }
+}
+
+async function resolveReport(id) {
+  await post(`/api/reports/${id}/resolve`);
+  load();
+}
+
+function reportCard(r) {
+  const when = new Date(r.ts * 1000).toLocaleString();
+  const btn = r.status === "open" ? `<button onclick="resolveReport(${r.id})">Mark resolved</button>` : "";
+  return `<div class="card"><b>${esc(r.kind)}</b> at ${esc(r.place)}
+    <span class="tag ${r.status === "open" ? "open" : "ended"}">${r.status.toUpperCase()}</span>
+    <div class="meta">${esc(r.note || "No note")} | ${esc(when)}</div>${btn}</div>`;
+}
+
+function eventCard(e) {
+  const rating = e.avg_rating !== null ? `Average rating ${e.avg_rating}/5 from ${e.feedback_count}` : "No feedback yet";
+  const comments = e.comments.map(c => `<div class="cm">${c.rating}/5 ${esc(c.comment)}</div>`).join("") || `<div class="meta">No comments.</div>`;
+  const people = e.people.map(p => `<div class="meta">${esc(p.name)} (${esc(p.usn)})</div>`).join("") || `<div class="meta">Nobody yet.</div>`;
+  return `<div class="card"><b>${esc(e.title)}</b><span class="tag ${e.status === "ended" ? "ended" : ""}">${e.status.toUpperCase()}</span>
+    <div class="meta">${esc(e.place)} | ${e.start_text} | ${e.duration_min} min | ${e.registered} registered | ${rating}</div>
+    <details><summary>Feedback comments</summary>${comments}</details>
+    <details><summary>Registered students</summary>${people}</details></div>`;
+}
+
+async function load() {
+  try {
+    const d = await (await fetch("/api/admin/inbox")).json();
+    document.getElementById("reports").innerHTML = d.reports.length ? d.reports.map(reportCard).join("") : `<div class="meta">No reports yet.</div>`;
+    document.getElementById("events").innerHTML = d.events.length ? d.events.map(eventCard).join("") : `<div class="meta">No events yet.</div>`;
+  } catch (e) { console.log(e); }
+}
+load();
+setInterval(() => {
+  const a = document.activeElement;
+  if (!a || a.tagName !== "INPUT") load();
+}, 5000);
+</script>
+<script src="/static/nav.js"></script>
+</body>
+</html>

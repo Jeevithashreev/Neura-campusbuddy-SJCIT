@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CampusBuddy: SJCIT</title>
+<style>
+  :root { --bg:#0f3d2e; --ink:#1b2b24; --muted:#5b6b63; --green:#1f8a5b; --amber:#f2b33d; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:Calibri,"Segoe UI",sans-serif; background:#eaf4ec; color:var(--ink); }
+  header { background:var(--bg); color:#fff; padding:28px 24px 22px; }
+  header h1 { margin:0; font-size:32px; }
+  header p { margin:6px 0 0; color:#cfe8d8; }
+  main { max-width:1000px; margin:20px auto; padding:0 16px; }
+  .strip { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:18px; }
+  .pill { background:#fff; border-radius:12px; padding:10px 16px; }
+  .pill b { color:var(--green); font-size:22px; margin-right:6px; }
+  .modes { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:16px; }
+  .mode { background:#fff; border-radius:14px; padding:20px; }
+  .mode h2 { margin:0 0 4px; font-size:24px; }
+  .mode .sub { color:var(--muted); font-size:14px; margin-bottom:12px; }
+  .mode a, .mode span.soon { display:block; padding:10px 14px; margin:6px 0; border-radius:10px; text-decoration:none; font-size:16px; }
+  .mode a { background:var(--green); color:#fff; }
+  .mode.admin a { background:var(--bg); }
+  .mode span.soon { background:#e3efe6; color:var(--muted); }
+  .note { color:var(--muted); font-size:13px; margin-top:16px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>CampusBuddy: SJCIT</h1>
+  <p>AI energy saver and campus guide. Choose how you want to use it.</p>
+</header>
+<main>
+  <div class="strip">
+    <div class="pill"><b id="people">0</b>people on campus now</div>
+    <div class="pill"><b id="kwh">0.0</b>kWh saved (estimated)</div>
+    <div class="pill"><b id="evs">0</b>events live or coming up</div>
+  </div>
+  <div class="modes">
+    <div class="mode">
+      <h2>Student mode</h2>
+      <div class="sub">Events, finding places, and campus information.</div>
+      <a href="/static/events.html">Events: register and give feedback</a>
+      <a href="/static/student.html">Find a place on the campus map</a>
+      <a href="/static/map.html">Satellite campus map</a>
+      <a href="/static/report.html">Report a problem on the map</a>
+      <span class="soon">Event photos and reviews feed (coming)</span>
+    </div>
+    <div class="mode admin">
+      <h2>Admin mode</h2>
+      <div class="sub">Every block, energy saved, and what students report.</div>
+      <a href="/static/admin.html">Dashboard: every block and its people</a>
+      <a href="/static/leaderboard.html">Greenest Block ranking</a>
+      <a href="/static/index.html">Live floor view and controls</a>
+      <a href="/static/copilot.html">AI copilot</a>
+      <a href="/static/inbox.html">Inbox: event feedback and problem reports</a>  
+    </div>
+  </div>
+  <p class="note">Energy figures are simulated estimates. Sign-in is a demo with no passwords.</p>
+</main>
+<script>
+async function refresh() {
+  try {
+    const s = await (await fetch("/api/state")).json();
+    document.getElementById("people").textContent = s.rooms.reduce((a, r) => a + r.persons, 0);
+    document.getElementById("kwh").textContent = s.saved_kwh.toFixed(1);
+  } catch (e) { console.log(e); }
+  try {
+    const ev = await (await fetch("/api/events")).json();
+    document.getElementById("evs").textContent = ev.filter(e => e.status !== "ended").length;
+  } catch (e) { console.log(e); }
+}
+refresh();
+setInterval(refresh, 3000);
+</script>
+<script src="/static/nav.js"></script></body>
+</html>

@@ -44,7 +44,7 @@ class Question(BaseModel):
 
 @app.get("/")
 def home():
-    return FileResponse("static/index.html")
+    return FileResponse("static/home.html")
 
 
 @app.get("/api/state")
