@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Campus Guide: SJCIT</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  html, body { height:100%; margin:0; font-family: Calibri, "Segoe UI", sans-serif; background:#eaf4ec; }
+  .wrap { display:grid; grid-template-columns:340px 1fr; height:100%; }
+  .side { padding:16px; overflow:auto; background:#eaf4ec; }
+  .side h1 { margin:0 0 2px; color:#1f8a5b; font-size:24px; }
+  .links { margin:0 0 12px; font-size:14px; }
+  input { width:100%; box-sizing:border-box; padding:12px; font-size:16px; border:1px solid #bbb; border-radius:8px; }
+  #msg { background:#0f3d2e; color:#fff; border-radius:10px; padding:12px 14px; margin:12px 0; font-size:15px; }
+  .card { background:#fff; border-radius:10px; padding:10px 14px; margin-top:8px; box-shadow:0 1px 4px rgba(0,0,0,.15); }
+  .card b { color:#0f3d2e; font-size:17px; }
+  .card div { color:#555; margin:3px 0 8px; font-size:14px; }
+  .card button { border:0; border-radius:8px; background:#1f8a5b; color:#fff; padding:7px 12px; font-size:14px; cursor:pointer; }
+  label { font-size:14px; color:#333; display:block; margin-top:10px; }
+  #map { height:100%; }
+  .robot { font-size:34px; line-height:34px; text-align:center; filter:drop-shadow(0 2px 3px rgba(0,0,0,.6)); }
+  @media (max-width:800px) {
+    .wrap { grid-template-columns:1fr; grid-template-rows:auto 55vh; height:auto; }
+    #map { height:55vh; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="side">
+    <h1>Campus Guide</h1>
+    <p class="links"><a href="/static/home.html">Home</a> | <a href="/static/map.html">Energy map</a></p>
+    <input id="q" placeholder="Where do you want to go? e.g. Principal, Fee, AIML" oninput="render()" onkeydown="if(event.key==='Enter') goFirst()">
+    <div id="msg">Hi! Search a place and press "Take me there". I will walk you to it.</div>
+    <label><input type="checkbox" id="speak" style="width:auto"> Speak the directions (needs sound)</label>
+    <div id="list"></div>
+  </div>
+  <div id="map"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// Where the robot starts (the entrance kiosk). Placeholder: the Admin Block position.
+// If your kiosk or gate is elsewhere, right-click it on Google Maps and change these two numbers.
+const START = [13.395922, 77.727883];
+
+// Real positions taken from Google Maps right-click
+const BLOCKS = {
+  admin:   [13.395922, 77.727883],
+  it:      [13.395160, 77.727830],
+  library: [13.395299, 77.729189],
+  mech:    [13.395294, 77.730605],
+  aero:    [13.395389, 77.731095]
+};
+const BLOCKNAME = {
+  admin: "Admin Block", it: "IT Block", library: "Library",
+  mech: "Mechanical Block", aero: "Aeronautical Dept"
+};
+
+const PLACES = [
+  { name: "Principal's chamber", block: "admin", detail: "1st floor, last room" },
+  { name: "Fee counter", block: "admin", detail: "near the Principal's chamber" },
+  { name: "Maths department", block: "admin", detail: "2nd floor, last room" },
+  { name: "AIML department", block: "it", detail: "ground floor" },
+  { name: "Gradient Hall", block: "it", detail: "ground floor (hackathon venue)" },
+  { name: "Synergic lab", block: "it", detail: "ground floor" },
+  { name: "CS department", block: "it", detail: "1st floor" },
+  { name: "Admin Block", block: "admin", detail: "main administrative block" },
+  { name: "IT Block", block: "it", detail: "main block" },
+  { name: "Library", block: "library", detail: "main block" },
+  { name: "Mechanical Block", block: "mech", detail: "main block" },
+  { name: "Aeronautical Dept", block: "aero", detail: "main block" }
+];
+
+const map = L.map("map").setView([13.3955, 77.7295], 17);
+L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+  maxZoom: 20, maxNativeZoom: 19,
+  attribution: "Imagery: Esri, Maxar, Earthstar Geographics"
+}).addTo(map);
+
+for (const k in BLOCKS) {
+  L.circleMarker(BLOCKS[k], { radius: 10, weight: 3, color: "#fff", fillColor: "#1f8a5b", fillOpacity: 0.9 })
+    .bindTooltip(BLOCKNAME[k], { permanent: true, direction: "top", offset: [0, -8] })
+    .addTo(map);
+}
+
+const robot = L.marker(START, {
+  icon: L.divIcon({ className: "", html: '<div class="robot">🤖</div>', iconSize: [34, 34], iconAnchor: [17, 17] }),
+  zIndexOffset: 1000
+}).addTo(map);
+
+let line = null, anim = 0;
+
+function say(text) {
+  document.getElementById("msg").textContent = text;
+  if (document.getElementById("speak").checked && "speechSynthesis" in window) {
+    speechSynthesis.cancel();
+    speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+  }
+}
+
+function arrive(p) {
+  const text = `We have arrived at the ${BLOCKNAME[p.block]}. ${p.name}: ${p.detail}.`;
+  say(text);
+  robot.bindPopup(text).openPopup();
+}
+
+function go(i) {
+  const p = PLACES[i];
+  const target = BLOCKS[p.block];
+  const id = ++anim;
+  if (line) map.removeLayer(line);
+  robot.closePopup();
+  robot.setLatLng(START);
+  line = L.polyline([START, target], { color: "#fff", weight: 3, dashArray: "6 8" }).addTo(map);
+  map.fitBounds(L.latLngBounds([START, target]), { padding: [80, 80], maxZoom: 19 });
+
+  const dist = map.distance(START, target);
+  if (dist < 15) {                      // the place is in the same block as the start
+    arrive(p);
+    return;
+  }
+  say(`Follow me! Taking you to ${p.name} in the ${BLOCKNAME[p.block]}.`);
+  const dur = Math.min(12000, Math.max(4000, dist * 40));
+  const t0 = performance.now();
+  function step(now) {
+    if (id !== anim) return;            // a newer request replaced this one
+    const f = Math.min(1, (now - t0) / dur);
+    robot.setLatLng([START[0] + (target[0] - START[0]) * f, START[1] + (target[1] - START[1]) * f]);
+    if (f < 1) requestAnimationFrame(step); else arrive(p);
+  }
+  requestAnimationFrame(step);
+}
+
+function hits() {
+  const t = document.getElementById("q").value.trim().toLowerCase();
+  return PLACES.map((p, i) => ({ p, i })).filter(x => (x.p.name + " " + x.p.detail + " " + BLOCKNAME[x.p.block]).toLowerCase().includes(t));
+}
+function goFirst() { const h = hits(); if (h.length) go(h[0].i); }
+
+function render() {
+  const h = hits();
+  document.getElementById("list").innerHTML = h.length
+    ? h.map(x => `<div class="card"><b>${x.p.name}</b>
+        <div>${BLOCKNAME[x.p.block]}, ${x.p.detail}</div>
+        <button onclick="go(${x.i})">Take me there</button></div>`).join("")
+    : `<div class="card">No match. Try another word.</div>`;
+}
+render();
+</script>
+</body>
+</html>
