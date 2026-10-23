@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CampusBuddy: Admin</title>
+<style>
+  :root { --bg:#0f3d2e; --ink:#1b2b24; --muted:#5b6b63; --green:#1f8a5b; --red:#c8553d; --amber:#f2b33d; --grey:#5b6b63; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:Calibri,"Segoe UI",sans-serif; background:#eaf4ec; color:var(--ink); }
+  header { background:var(--bg); color:#fff; padding:14px 24px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
+  header h1 { margin:0; font-size:22px; }
+  header a { color:#cfe8d8; margin-left:14px; font-size:14px; }
+  main { max-width:1100px; margin:18px auto; padding:0 16px; }
+  .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin-bottom:16px; }
+  .stat { background:#fff; border-radius:12px; padding:14px 18px; }
+  .stat b { display:block; font-size:28px; color:var(--green); }
+  .stat span { color:var(--muted); font-size:13px; }
+  h2 { margin:18px 0 8px; font-size:18px; }
+  .rank { background:#fff; border-radius:12px; padding:12px 16px; }
+  .row { display:flex; align-items:center; gap:10px; padding:6px 0; }
+  .row .n { width:150px; }
+  .row .bar { flex:1; background:#e3efe6; border-radius:6px; height:14px; }
+  .row .bar i { display:block; height:14px; border-radius:6px; background:var(--green); }
+  .row .v { width:120px; text-align:right; font-size:14px; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px; }
+  .card { border-radius:12px; color:#fff; padding:14px; }
+  .card h3 { margin:0 0 6px; font-size:17px; }
+  .card div { font-size:14px; margin:2px 0; }
+  .occupied { background:var(--green); }
+  .empty_lights_on { background:var(--red); }
+  .warning { background:var(--amber); color:var(--ink); }
+  .switched_off { background:var(--grey); }
+  .box { background:#fff; border-radius:12px; padding:14px 16px; }
+  .box li { font-size:14px; margin:3px 0; }
+  .box span { color:var(--muted); margin-right:8px; }
+  .note { color:var(--muted); font-size:13px; margin-top:12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>CampusBuddy: Admin mode</h1>
+  <div><a href="/">Floor view</a><a href="/static/map.html">Campus map</a></div>
+</header>
+<main>
+  <div class="stats">
+    <div class="stat"><b id="people">0</b><span>People on campus now</span></div>
+    <div class="stat"><b id="kwh">0.000</b><span>kWh saved (estimated)</span></div>
+    <div class="stat"><b id="rs">0.00</b><span>Rupees saved (estimated)</span></div>
+    <div class="stat"><b id="off">0</b><span>Blocks switched off</span></div>
+  </div>
+
+  <h2>Greenest Block ranking</h2>
+  <div class="rank" id="rank"></div>
+
+  <h2>Every block</h2>
+  <div class="cards" id="cards"></div>
+
+  <h2>Recent activity</h2>
+  <div class="box"><ul id="events"></ul></div>
+
+  <p class="note">Energy figures are simulated estimates (every block assumed at the same power for now). Real SJCIT meter data would replace them.</p>
+</main>
+<script>
+const LABEL = {
+  occupied:"Occupied", empty_lights_on:"Empty, lights on",
+  warning:"Warning: switching off soon", switched_off:"Switched off (saving power)"
+};
+
+function render(s) {
+  const tariff = s.config.tariff;
+  const people = s.rooms.reduce((a, r) => a + r.persons, 0);
+  document.getElementById("people").textContent = people;
+  document.getElementById("kwh").textContent = s.saved_kwh.toFixed(3);
+  document.getElementById("rs").textContent = s.saved_rupees.toFixed(2);
+  document.getElementById("off").textContent = s.rooms.filter(r => r.status === "switched_off").length;
+
+  const ranked = [...s.rooms].sort((a, b) => b.saved_kwh - a.saved_kwh);
+  const max = Math.max(...ranked.map(r => r.saved_kwh), 0.001);
+  document.getElementById("rank").innerHTML = ranked.map((r, i) => `
+    <div class="row">
+      <div class="n">${i === 0 ? "🏆 " : (i + 1) + ". "}${r.name}</div>
+      <div class="bar"><i style="width:${(r.saved_kwh / max) * 100}%"></i></div>
+      <div class="v">${r.saved_kwh.toFixed(3)} kWh</div>
+    </div>`).join("");
+
+  document.getElementById("cards").innerHTML = s.rooms.map(r => `
+    <div class="card ${r.status}">
+      <h3>${r.name}</h3>
+      <div>${LABEL[r.status]}</div>
+      <div>People: ${r.persons}</div>
+      <div>Saved: ${r.saved_kwh.toFixed(3)} kWh (Rs ${(r.saved_kwh * tariff).toFixed(2)})</div>
+    </div>`).join("");
+
+  document.getElementById("events").innerHTML =
+    s.events.map(e => `<li><span>${e.time}</span>${e.msg}</li>`).join("");
+}
+
+async function refresh() {
+  try { render(await (await fetch("/api/state")).json()); } catch (e) { console.log(e); }
+}
+refresh();
+setInterval(refresh, 1000);
+</script>
+</body>
+</html>
