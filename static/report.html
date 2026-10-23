@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CampusBuddy: Report a problem</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:Calibri,"Segoe UI",sans-serif; background:#eaf4ec; color:#1b2b24; }
+  header { background:#0f3d2e; color:#fff; padding:12px 24px; }
+  header h1 { margin:0; font-size:20px; }
+  #map { height:55vh; }
+  .form { max-width:700px; margin:12px auto; padding:0 16px; }
+  .form input, .form select { padding:8px; font-size:14px; margin:3px 6px 3px 0; }
+  .form input.wide { width:100%; }
+  button { padding:8px 14px; border:0; border-radius:8px; background:#0f3d2e; color:#fff; cursor:pointer; font-size:14px; margin:3px 6px 3px 0; }
+  .hint { color:#5b6b63; font-size:14px; margin:4px 0; }
+</style>
+</head>
+<body>
+<header><h1>Report a problem on campus</h1></header>
+<div id="map"></div>
+<div class="form">
+  <div class="hint" id="pin">Tap the map where the problem is, or use your location.</div>
+  <button onclick="useMe()">Use my location</button>
+  <select id="kind"></select>
+  <input id="place" class="wide" placeholder="Place name (e.g. Library ground floor)">
+  <input id="note" class="wide" placeholder="What is wrong? (optional)">
+  <button onclick="send()">Send report</button>
+  <div class="hint" id="out"></div>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// CHANGE THIS to a point on your campus (Google Maps: right-click, copy the numbers).
+const CENTER = [13.395627441199045, 77.72737893021385];
+
+const map = L.map("map").setView(CENTER, 17);
+L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+  { maxZoom: 19, attribution: "Esri" }).addTo(map);
+
+let marker = null, pos = null;
+function setPin(lat, lng) {
+  pos = { lat, lng };
+  if (marker) marker.setLatLng([lat, lng]); else marker = L.marker([lat, lng]).addTo(map);
+  document.getElementById("pin").textContent = "Pin placed. Now fill in the details below.";
+}
+map.on("click", e => setPin(e.latlng.lat, e.latlng.lng));
+
+function useMe() {
+  if (!navigator.geolocation) { alert("Location is not available on this device."); return; }
+  navigator.geolocation.getCurrentPosition(p => {
+    setPin(p.coords.latitude, p.coords.longitude);
+    map.setView([p.coords.latitude, p.coords.longitude], 19);
+  }, () => alert("Could not get your location. Tap the map instead."));
+}
+
+fetch("/api/kinds").then(r => r.json()).then(k => {
+  document.getElementById("kind").innerHTML = k.map(x => `<option>${x}</option>`).join("");
+});
+
+async function send() {
+  const out = document.getElementById("out");
+  if (!pos) { out.textContent = "Please tap the map first."; return; }
+  const place = document.getElementById("place").value.trim();
+  if (!place) { out.textContent = "Please type a place name."; return; }
+  const r = await fetch("/api/reports", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ place, kind: document.getElementById("kind").value,
+      note: document.getElementById("note").value, lat: pos.lat, lng: pos.lng })
+  });
+  const d = await r.json().catch(() => ({}));
+  out.textContent = r.ok ? "Thank you! The admin has been notified." : (d.detail || "Something went wrong");
+  if (r.ok) { document.getElementById("note").value = ""; }
+}
+</script>
+<script src="/static/nav.js"></script>
+</body>
+</html>
