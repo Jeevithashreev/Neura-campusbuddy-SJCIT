@@ -45,6 +45,10 @@ const NAMES = {
   1: "Admin Block", 2: "IT Block", 3: "Library",
   4: "Mechanical Block", 5: "Aeronautical Dept"
 };
+const INSIDE = {
+  1: "Principal's chamber (1st floor), Fee counter, Maths (2nd floor)",
+  2: "AIML (ground floor)"
+};
 const COLORS = { occupied:"#1f8a5b", empty_lights_on:"#c8553d", warning:"#f2b33d", switched_off:"#5b6b63" };
 const LABEL = { occupied:"Occupied", empty_lights_on:"Empty, lights on",
                 warning:"Warning: switching off soon", switched_off:"Switched off (saving power)" };
@@ -66,7 +70,8 @@ function render(s) {
     }
     markers[r.id]
       .setStyle({ fillColor: COLORS[r.status] })
-      .bindTooltip(`${NAMES[r.id] || r.name}: ${LABEL[r.status]} (people: ${r.persons})`);
+      .bindTooltip(`${NAMES[r.id] || r.name}: ${LABEL[r.status]} (people: ${r.persons})` +
+        (INSIDE[r.id] ? `<br>Inside: ${INSIDE[r.id]}` : ""));
   });
 }
 
