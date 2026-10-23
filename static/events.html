@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CampusBuddy: Events</title>
+<style>
+  :root { --bg:#0f3d2e; --ink:#1b2b24; --muted:#5b6b63; --green:#1f8a5b; --amber:#f2b33d; --grey:#5b6b63; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:Calibri,"Segoe UI",sans-serif; background:#eaf4ec; color:var(--ink); }
+  header { background:var(--bg); color:#fff; padding:14px 24px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
+  header h1 { margin:0; font-size:22px; }
+  header a { color:#cfe8d8; margin-left:14px; font-size:14px; }
+  main { max-width:800px; margin:18px auto; padding:0 16px; }
+  .me { background:#fff; border-radius:12px; padding:12px 16px; margin-bottom:16px; }
+  .me input { padding:8px; font-size:14px; margin-right:6px; margin-bottom:6px; }
+  button { padding:8px 14px; border:0; border-radius:8px; background:var(--bg); color:#fff; cursor:pointer; font-size:14px; }
+  .card { background:#fff; border-radius:12px; padding:14px 18px; margin-bottom:12px; }
+  .card h3 { margin:0 0 4px; font-size:19px; }
+  .meta { color:var(--muted); font-size:14px; margin:2px 0; }
+  .badge { display:inline-block; border-radius:10px; padding:2px 10px; font-size:12px; font-weight:bold; color:#fff; margin-left:8px; vertical-align:middle; }
+  .live { background:#c8553d; } .upcoming { background:var(--green); } .ended { background:var(--grey); }
+  .actions { margin-top:10px; }
+  .fb select, .fb textarea { padding:8px; font-size:14px; width:100%; margin:4px 0; }
+  .msg { margin-top:8px; font-size:14px; }
+  h2 { font-size:18px; margin:18px 0 8px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>CampusBuddy: Events</h1>
+  <div><a href="/">Home</a><a href="/static/map.html">Campus map</a><a href="/static/student.html">Find a place</a></div>
+</header>
+<main>
+  <div class="me">
+    <b>Student sign-in (demo)</b>
+    <div id="meState" class="meta"></div>
+    <input id="name" placeholder="Your name">
+    <input id="usn" placeholder="USN">
+    <button onclick="signIn()">Sign in</button>
+  </div>
+  <h2>What is happening on campus</h2>
+  <div id="list">Loading...</div>
+</main>
+<script>
+let last = "";
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+function me() {
+  try { return JSON.parse(localStorage.getItem("campus_student") || "null"); } catch (e) { return null; }
+}
+
+function showMe() {
+  const m = me();
+  document.getElementById("meState").textContent = m ? `Signed in as ${m.name} (${m.usn})` : "Not signed in yet.";
+}
+
+function signIn() {
+  const name = document.getElementById("name").value.trim();
+  const usn = document.getElementById("usn").value.trim().toUpperCase();
+  if (!name || !usn) { alert("Please type your name and USN."); return; }
+  localStorage.setItem("campus_student", JSON.stringify({ name, usn }));
+  showMe();
+}
+
+async function call(url, body) {
+  const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.detail || "Something went wrong");
+  return d;
+}
+
+async function register(id) {
+  const m = me();
+  if (!m) { alert("Please sign in first."); return; }
+  const out = document.getElementById("msg" + id);
+  try { await call(`/api/events/${id}/register`, m); out.textContent = "You are registered. See you there!"; load(true); }
+  catch (e) { out.textContent = e.message; }
+}
+
+async function sendFeedback(id) {
+  const out = document.getElementById("msg" + id);
+  const rating = parseInt(document.getElementById("rate" + id).value);
+  const comment = document.getElementById("cmt" + id).value;
+  try {
+    await call(`/api/events/${id}/feedback`, { rating, comment });
+    localStorage.setItem("fb_" + id, "1");
+    out.textContent = "Thank you for your feedback!";
+    load(true);
+  } catch (e) { out.textContent = e.message; }
+}
+
+function card(e) {
+  const when = e.status === "upcoming" ? `Starts at ${e.start_text} (in about ${Math.max(1, Math.round(e.starts_in_min))} min)`
+             : e.status === "live" ? `Started at ${e.start_text}, happening now` : `Held at ${e.start_text}`;
+  let actions = "";
+  if (e.status !== "ended") {
+    actions = `<button onclick="register(${e.id})">Register</button>`;
+  } else if (localStorage.getItem("fb_" + e.id)) {
+    actions = `<div class="meta">You have shared your feedback. Thank you!</div>`;
+  } else {
+    actions = `<div class="fb"><b>How was it?</b>
+      <select id="rate${e.id}"><option value="5">5 - Excellent</option><option value="4">4 - Good</option>
+        <option value="3">3 - Okay</option><option value="2">2 - Poor</option><option value="1">1 - Bad</option></select>
+      <textarea id="cmt${e.id}" rows="2" placeholder="Your feedback (optional)"></textarea>
+      <button onclick="sendFeedback(${e.id})">Send feedback</button></div>`;
+  }
+  const rating = e.avg_rating !== null ? ` | Rating ${e.avg_rating}/5 (${e.feedback_count})` : "";
+  return `<div class="card">
+    <h3>${esc(e.title)}<span class="badge ${e.status}">${e.status.toUpperCase()}</span></h3>
+    <div class="meta">${esc(e.place)} | ${esc(when)} | ${e.duration_min} min</div>
+    <div class="meta">${esc(e.description)}</div>
+    <div class="meta">${e.registered} registered${rating}</div>
+    <div class="actions">${actions}</div>
+    <div class="msg" id="msg${e.id}"></div>
+  </div>`;
+}
+
+async function load(force) {
+  try {
+    const data = await (await fetch("/api/events")).json();
+    const sig = JSON.stringify(data.map(e => [e.id, e.status, e.registered, e.feedback_count, e.avg_rating]));
+    const a = document.activeElement;
+    const typing = a && (a.tagName === "TEXTAREA" || a.tagName === "SELECT");
+    if (!force && (sig === last || typing)) return;
+    last = sig;
+    document.getElementById("list").innerHTML = data.length ? data.map(card).join("") : "No events yet.";
+  } catch (e) { console.log(e); }
+}
+
+showMe();
+load(true);
+setInterval(() => load(false), 5000);
+</script>
+</body>
+</html>
