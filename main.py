@@ -109,5 +109,5 @@ def copilot(body: Question):
 import features
 app.include_router(features.router)
 
-from register import router as signups_router
+from registrations import router as signups_router
 app.include_router(signups_router)
