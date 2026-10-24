@@ -12,6 +12,17 @@ function countOf(e) {
   return (e.registered || 0) + SU.filter(function (s) { return s.event === k; }).length;
 }
 
+/* Hide repeated events (same title and place), keep the first one */
+function unique(list) {
+  var seen = {};
+  return list.filter(function (e) {
+    var k = (String(e.title) + "|" + String(e.place)).toLowerCase();
+    if (seen[k]) return false;
+    seen[k] = true;
+    return true;
+  });
+}
+
 function render() {
   var box = document.getElementById("list");
   if (!EV.length) {
@@ -46,7 +57,7 @@ function load() {
     fetch("/api/events", { cache:"no-store" }).then(function (r) { return r.json(); }),
     fetch("/api/signups", { cache:"no-store" }).then(function (r) { return r.ok ? r.json() : []; }).catch(function () { return []; })
   ]).then(function (res) {
-    EV = Array.isArray(res[0]) ? res[0] : [];
+    EV = unique(Array.isArray(res[0]) ? res[0] : []);
     SU = Array.isArray(res[1]) ? res[1] : [];
     render();
   }).catch(function (e) {
@@ -75,7 +86,6 @@ document.getElementById("list").addEventListener("click", function (ev) {
       out.textContent = "You are registered! " + countOf(e) + " people have registered so far.";
       document.getElementById("em" + i).value = "";
       document.getElementById("nm" + i).value = "";
-      document.querySelector("#list .count") && load();
     });
   }).catch(function (err) {
     out.className = "msg bad";
