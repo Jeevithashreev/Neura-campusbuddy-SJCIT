@@ -59,10 +59,9 @@
   .step b { display:block; font-size:16px; margin-bottom:4px; }
   .step span { font-size:14px; color:var(--muted); line-height:1.5; }
 
-  .ev { display:flex; align-items:center; gap:14px; padding:12px 0; border-bottom:1px solid var(--line); }
-  .ev:last-child { border-bottom:0; }
-  .ev .t { font-weight:700; color:var(--accent-dark); min-width:54px; }
-  .ev b { display:block; font-size:15px; }
+  .ev { display:flex; align-items:center; gap:14px; padding:12px 0; }
+  .ev .t { font-weight:700; color:var(--accent-dark); min-width:70px; }
+  .ev b { display:block; font-size:16px; }
   .ev span { font-size:13px; color:var(--muted); }
   .tag { margin-left:auto; font-size:11px; font-weight:700; color:#fff; border-radius:10px; padding:3px 10px; background:var(--green); }
   .tag.live { background:var(--red); }
@@ -79,121 +78,3 @@
   <h1>SJCIT Energy and Campus Assistant</h1>
   <p>Detects empty rooms with lights on, switches them off automatically, and helps students find places and join events.</p>
   <div class="cta"><a class="primary" href="/static/index.html">Open dashboard</a><a class="ghost" href="/static/student.html">Find a place</a></div>
-  <div id="status">Connecting to live data...</div>
-</div>
-
-<main>
-  <div class="strip">
-    <div class="stat"><b id="people">0</b><span>People on campus now</span></div>
-    <div class="stat"><b id="kwh">0.0</b><span>kWh saved (estimated)</span></div>
-    <div class="stat"><b id="rs">0</b><span>Rupees saved (estimated)</span></div>
-    <div class="stat"><b id="evs">0</b><span>Events live or coming up</span></div>
-  </div>
-
-  <section class="card">
-    <h2>Campus right now</h2>
-    <div class="sub">Live status of each block. The camera is on one IT Block room, and the other blocks are simulated.</div>
-    <div class="blocks" id="blocks"></div>
-  </section>
-
-  <section class="modes">
-    <div class="card mode">
-      <h2>Student mode</h2>
-      <div class="sub">Events, finding places, and campus information.</div>
-      <a href="/static/events.html">Events: register and give feedback</a>
-      <a href="/static/student.html">Find a place on the campus map</a>
-      <a href="/static/report.html">Report a problem on the map</a>
-    </div>
-    <div class="card mode admin">
-      <h2>Admin mode</h2>
-      <div class="sub">Every block, energy saved, and what students report.</div>
-      <a href="/static/index.html">Dashboard</a>
-      <a href="/static/leaderboard.html">Greenest Block ranking</a>
-      <a href="/static/copilot.html">AI copilot</a>
-      <a href="/static/inbox.html">Inbox: event feedback and problem reports</a>
-    </div>
-  </section>
-
-  <section class="card">
-    <h2>How it works</h2>
-    <div class="sub">Three steps, from the camera to the savings.</div>
-    <div class="steps">
-      <div class="step"><i>1</i><b>Detect</b><span>A camera counts the people in a room. Only a number is sent, and no faces or video are stored.</span></div>
-      <div class="step"><i>2</i><b>Act</b><span>If a room is empty with the lights on, the system warns, then switches the lights off after a short delay.</span></div>
-      <div class="step"><i>3</i><b>Save</b><span>The dashboard shows the energy and rupees saved for each block, and the leaderboard ranks them.</span></div>
-    </div>
-  </section>
-
-  <section class="card">
-    <h2>Events on campus</h2>
-    <div class="sub">Live and coming up. If nothing is live, the most recent events are shown as ended. Students can register and give feedback on the Events page.</div>
-    <div id="events"></div>
-  </section>
-
-  <p class="note">Energy figures are simulated estimates. Sign-in is a demo with no passwords.</p>
-</main>
-
-<script>
-var LABEL = { occupied:"Occupied", empty_lights_on:"Empty, lights on", warning:"Warning", switched_off:"Switched off" };
-function esc(s) {
-  return String(s).replace(/[&<>"']/g, function (c) {
-    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
-  });
-}
-function setText(id, v) { var el = document.getElementById(id); if (el) el.textContent = v; }
-
-function loadState() {
-  return fetch("/api/state", { cache: "no-store" })
-    .then(function (r) {
-      if (!r.ok) throw new Error("/api/state returned " + r.status);
-      return r.json();
-    })
-    .then(function (s) {
-      var rooms = s.rooms || [];
-      var people = 0;
-      rooms.forEach(function (r) { people += (r.persons || 0); });
-      setText("people", people);
-      setText("kwh", Number(s.saved_kwh || 0).toFixed(1));
-      setText("rs", Math.round(Number(s.saved_rupees || 0)));
-      document.getElementById("blocks").innerHTML = rooms.map(function (r) {
-        return '<div class="blk ' + esc(r.status) + '"><b>' + esc(r.name) + '</b><span>' +
-               esc(LABEL[r.status] || r.status) + '<br>' + (r.persons || 0) + ' people</span></div>';
-      }).join("");
-      setText("status", "Live data connected. Updated " + new Date().toLocaleTimeString());
-    })
-    .catch(function (e) {
-      setText("status", "Could not load live data: " + e.message);
-      console.log(e);
-    });
-}
-
-function loadEvents() {
-  return fetch("/api/events", { cache: "no-store" })
-    .then(function (r) {
-      if (!r.ok) throw new Error("/api/events returned " + r.status);
-      return r.json();
-    })
-    .then(function (all) {
-      var active = all.filter(function (e) { return e.status !== "ended"; });
-      setText("evs", active.length);
-      var show = active.length ? active : all.slice(-4).reverse();
-      document.getElementById("events").innerHTML = show.length
-        ? show.slice(0, 4).map(function (e) {
-            var cls = e.status === "live" ? "live" : (e.status === "ended" ? "ended" : "");
-            return '<div class="ev"><div class="t">' + esc(e.start_text) + '</div>' +
-                   '<div><b>' + esc(e.title) + '</b><span>' + esc(e.place) + ' | ' + e.duration_min +
-                   ' min | ' + e.registered + ' registered</span></div>' +
-                   '<span class="tag ' + cls + '">' + esc(String(e.status).toUpperCase()) + '</span></div>';
-          }).join("")
-        : '<div class="sub">No events yet. Admins can create one in the Inbox.</div>';
-    })
-    .catch(function (e) { console.log(e); });
-}
-
-function refresh() { loadState(); loadEvents(); }
-refresh();
-setInterval(refresh, 3000);
-</script>
-<script src="/static/nav.js"></script>
-</body>
-</html>
