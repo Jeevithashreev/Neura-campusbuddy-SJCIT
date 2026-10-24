@@ -5,21 +5,27 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Admin Copilot: SJCIT</title>
 <style>
-  body { font-family: Calibri, "Segoe UI", sans-serif; background:#f3f7f4; margin:0; padding:24px; max-width:800px; }
-  h1 { color:#1f8a5b; margin:0 0 4px; }
+  body { font-family: Calibri, "Segoe UI", sans-serif; background:#eaf4ec; margin:0 auto; padding:24px; max-width:820px; }
+  h1 { color:#0f3d2e; margin:0 0 4px; font-size:30px; }
   .links { margin:0 0 16px; }
-  #log { background:#fff; border-radius:10px; padding:14px; min-height:200px; box-shadow:0 1px 4px rgba(0,0,0,.15); }
-  .q { color:#0f3d2e; font-weight:bold; margin:10px 0 2px; }
-  .a { margin:0 0 10px; white-space:pre-wrap; }
-  .row { display:flex; gap:8px; margin-top:12px; }
-  input { flex:1; padding:10px; font-size:15px; border:1px solid #bbb; border-radius:8px; }
-  button { padding:10px 16px; border:0; border-radius:8px; background:#1f8a5b; color:#fff; font-size:15px; cursor:pointer; }
-  .chips button { background:#e3ece6; color:#0f3d2e; font-size:13px; padding:6px 10px; margin:6px 6px 0 0; }
+  .links a { color:#1f8a5b; font-weight:bold; text-decoration:none; margin-right:10px; }
+  #log { background:#fff; border-radius:14px; padding:16px; min-height:260px; max-height:55vh; overflow:auto;
+         box-shadow:0 2px 8px rgba(0,0,0,.12); }
+  .q { background:#0f3d2e; color:#fff; padding:8px 12px; border-radius:12px 12px 2px 12px;
+       margin:12px 0 6px auto; max-width:80%; width:fit-content; }
+  .a { background:#eaf4ec; padding:8px 12px; border-radius:12px 12px 12px 2px; margin:0 0 10px;
+       max-width:90%; white-space:pre-wrap; line-height:1.5; }
+  .row { display:flex; gap:8px; margin-top:14px; }
+  input { flex:1; padding:12px; font-size:16px; border:1px solid #bbb; border-radius:10px; }
+  button { padding:12px 18px; border:0; border-radius:10px; background:#1f8a5b; color:#fff; font-size:15px; cursor:pointer; }
+  button:hover { background:#17734c; }
+  .chips button { background:#fff; color:#0f3d2e; border:1px solid #1f8a5b; font-size:13px; padding:7px 12px; margin:8px 8px 0 0; border-radius:16px; }
+  .chips button:hover { background:#e3ece6; }
 </style>
 </head>
 <body>
-<h1>Admin AI Copilot</h1>
-<p class="links"><a href="/static/index.html">Dashboard</a> | <a href="/static/map.html">Satellite map</a> | <a href="/static/leaderboard.html">Greenest Block</a></p>
+<h1>🤖 Admin AI Copilot</h1>
+<p class="links"><a href="/static/home.html">Home</a><a href="/static/index.html">Dashboard</a><a href="/static/map.html">Satellite map</a><a href="/static/leaderboard.html">Greenest Block</a></p>
 <div id="log"><div class="a">Ask about the live status of the SJCIT buildings. Savings are simulated estimates.</div></div>
 <div class="chips">
   <button onclick="ask('Which block saved the most energy?')">Which block saved the most?</button>
@@ -39,14 +45,15 @@ async function ask(text) {
   const log = document.getElementById("log");
   log.insertAdjacentHTML("beforeend", `<div class="q"></div><div class="a">Thinking...</div>`);
   const qs = log.querySelectorAll(".q"), as = log.querySelectorAll(".a");
-  qs[qs.length - 1].textContent = "Q: " + question;
+  qs[qs.length - 1].textContent = question;
   const out = as[as.length - 1];
   try {
     const r = await fetch("/api/copilot", { method: "POST", headers: { "Content-Type": "application/json" },
                                            body: JSON.stringify({ question }) });
     out.textContent = (await r.json()).answer;
   } catch (e) { out.textContent = "Could not reach the server."; }
+  log.scrollTop = log.scrollHeight;
 }
 </script>
-<script src="/static/nav.js"></script></body>
+</body>
 </html>
