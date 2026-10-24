@@ -5,110 +5,183 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CampusBuddy: SJCIT</title>
 <style>
-  :root { --accent:#E07B39; --accent-dark:#B85C1E; --accent-soft:#FBE3CF;
-          --cream:#FFF8F0; --line:#EBD8C4; --ink:#2F2A26; --muted:#7C6F64;
-          --green:#4E8F66; --red:#C0584A; --amber:#D9A441; --grey:#8C8279; }
-  * { box-sizing: border-box; }
-  body { margin:0; font-family: Calibri, "Segoe UI", Arial, sans-serif; background:var(--cream); color:var(--ink); }
+  :root { --accent:#E07B39; --accent2:#F4A261; --accent-dark:#B85C1E; --soft:#FBE3CF;
+          --bg:#F6EFE7; --card:#FFFFFF; --line:#EADBCB; --ink:#2F2A26; --muted:#8A7B6E;
+          --side:#2B1D14; --green:#4E8F66; --red:#C0584A; --amber:#D9A441; --grey:#8C8279; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:Calibri,"Segoe UI",Arial,sans-serif; background:var(--bg); color:var(--ink); }
+  .layout { display:grid; grid-template-columns:230px 1fr; min-height:100vh; }
 
-  /* faint SJCIT text watermark (delete the .wm block and the <div class="wm"> line to remove) */
-  .wm { position:fixed; inset:0; z-index:0; pointer-events:none; display:flex; align-items:center;
-        justify-content:center; font-size:min(22vw, 260px); font-weight:bold; letter-spacing:.08em;
-        color:var(--accent); opacity:.05; user-select:none; }
-  header, main { position:relative; z-index:1; }
+  .side { background:var(--side); color:#EBDCCB; padding:22px 14px; position:sticky; top:0; height:100vh; }
+  .logo { display:flex; align-items:center; gap:10px; padding:0 8px 22px; }
+  .logo i { width:38px; height:38px; border-radius:10px; background:linear-gradient(135deg,var(--accent),var(--accent2));
+            display:grid; place-items:center; color:#fff; font-style:normal; font-weight:bold; }
+  .logo b { font-size:17px; color:#fff; line-height:1.1; }
+  .logo span { display:block; font-size:12px; color:#B9A794; font-weight:normal; }
+  .side a { display:block; color:#D8C8B6; text-decoration:none; padding:11px 14px; border-radius:10px; margin-bottom:4px; font-size:15px; }
+  .side a:hover { background:rgba(255,255,255,.08); }
+  .side a.on { background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff; font-weight:600; }
+  .side small { position:absolute; bottom:18px; left:22px; right:18px; color:#9C8B79; font-size:12px; line-height:1.4; }
 
-  header { background:var(--accent-soft); border-bottom:1px solid var(--line); padding:22px 28px; }
-  header h1 { margin:0; font-size:26px; font-weight:600; color:var(--accent-dark); }
-  header p { margin:6px 0 0; color:var(--muted); font-size:15px; }
-  .nav { margin-top:12px; }
-  .nav a { color:var(--accent-dark); font-weight:600; font-size:14px; text-decoration:none; background:#fff;
-           border:1px solid var(--line); padding:6px 14px; border-radius:6px; margin-right:8px; display:inline-block; }
-  .nav a:hover { background:var(--accent-soft); }
+  .content { padding:24px 28px; max-width:1250px; }
+  .top { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:18px; }
+  .top h1 { margin:0; font-size:26px; font-weight:600; }
+  .top p { margin:4px 0 0; color:var(--muted); font-size:14px; }
+  .live { background:#fff; border:1px solid var(--line); border-radius:20px; padding:7px 14px; font-size:13px; color:var(--muted); }
+  .live::before { content:""; display:inline-block; width:9px; height:9px; border-radius:50%; background:var(--green); margin-right:7px; }
 
-  main { max-width:1150px; margin:22px auto; padding:0 16px; }
-  .counters { display:flex; gap:16px; margin-bottom:18px; flex-wrap:wrap; }
-  .counter { background:#fff; border:1px solid var(--line); border-left:4px solid var(--accent); border-radius:8px;
-             padding:16px 26px; min-width:250px; font-size:14px; color:var(--muted); }
-  .counter b { display:block; font-size:36px; font-weight:600; color:var(--accent-dark); line-height:1.15; }
+  .cards { display:grid; grid-template-columns:1.5fr 1fr 1fr; gap:16px; margin-bottom:16px; }
+  .card { background:var(--card); border-radius:18px; padding:18px 20px; box-shadow:0 2px 10px rgba(120,70,20,.08); }
+  .card h4 { margin:0 0 6px; font-size:13px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
+  .hero { background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff; }
+  .hero h4 { color:rgba(255,255,255,.85); }
+  .big { font-size:40px; font-weight:600; line-height:1.1; }
+  .hero svg { width:100%; height:70px; margin-top:8px; }
+  .hero .sub { font-size:13px; color:rgba(255,255,255,.9); margin-top:2px; }
+  .donutwrap { display:flex; align-items:center; gap:16px; }
+  .donut { width:96px; height:96px; border-radius:50%; display:grid; place-items:center; flex:none; }
+  .donut div { width:68px; height:68px; border-radius:50%; background:#fff; display:grid; place-items:center;
+               font-size:20px; font-weight:600; }
+  .stack .big { color:var(--accent-dark); }
+  .stack .mini { margin-top:14px; padding-top:12px; border-top:1px solid var(--line); }
+  .mini b { font-size:24px; color:var(--accent-dark); font-weight:600; display:block; }
 
-  .floor, .events { background:#fff; border:1px solid var(--line); border-radius:8px; padding:18px; }
-  .events { margin-top:18px; }
-  .floor h2, .events h2 { margin:0 0 4px; font-size:19px; font-weight:600; color:var(--ink); }
+  .grid2 { display:grid; grid-template-columns:2.4fr 1fr; gap:16px; }
+  h2 { margin:0 0 4px; font-size:18px; font-weight:600; }
   .note { color:var(--muted); font-size:13px; margin:0 0 12px; }
+  .rooms { display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:12px; }
+  .room { border:1px solid var(--line); border-left:6px solid var(--grey); border-radius:14px; padding:14px; background:#fffdfb; display:flex; flex-direction:column; }
+  .room.occupied { border-left-color:var(--green); }
+  .room.empty_lights_on { border-left-color:var(--red); }
+  .room.warning { border-left-color:var(--amber); }
+  .room.switched_off { border-left-color:var(--grey); }
+  .room h3 { margin:0 0 8px; font-size:16px; font-weight:600; }
+  .pill { display:inline-block; font-size:12px; font-weight:600; color:#fff; border-radius:12px; padding:3px 10px; margin-bottom:8px; align-self:flex-start; }
+  .pill.occupied { background:var(--green); } .pill.empty_lights_on { background:var(--red); }
+  .pill.warning { background:var(--amber); color:var(--ink); } .pill.switched_off { background:var(--grey); }
+  .row { font-size:14px; color:var(--ink); line-height:1.6; flex:1; }
+  .row span { color:var(--muted); }
+  .btns { display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
+  .btns button { border:1px solid var(--line); background:#fff; color:var(--ink); border-radius:8px; padding:6px 9px; font-size:12px; cursor:pointer; }
+  .btns button:hover { background:var(--soft); }
 
-  .rooms { display:grid; grid-template-columns:repeat(5, 1fr); gap:12px; }
-  .room { border-radius:8px; color:#fff; padding:14px; min-height:180px; display:flex; flex-direction:column;
-          transition:background .4s; }
-  .room h3 { margin:0 0 6px; font-size:17px; font-weight:600; }
-  .room .st { font-size:14px; flex:1; line-height:1.6; }
-  .room .btns { display:flex; gap:6px; flex-wrap:wrap; }
-  .room button { border:0; border-radius:5px; padding:6px 9px; font-size:12px; cursor:pointer;
-                 background:rgba(255,255,255,.92); color:var(--ink); }
-  .room button:hover { background:#fff; }
-  .occupied { background:var(--green); }
-  .empty_lights_on { background:var(--red); }
-  .warning { background:var(--amber); color:var(--ink); }
-  .switched_off { background:var(--grey); }
-  .corridor { height:6px; background:var(--accent-soft); border-radius:3px; margin:14px 0; }
-
-  .events ul { max-height:220px; overflow:auto; padding-left:20px; margin:8px 0 0; }
-  .events li { font-size:14px; margin:4px 0; }
-  .events span { color:var(--muted); margin-right:8px; }
+  .events ul { list-style:none; margin:8px 0 0; padding:0; max-height:420px; overflow:auto; }
+  .events li { font-size:13px; padding:8px 0; border-bottom:1px solid var(--line); }
+  .events li span { display:block; color:var(--muted); font-size:12px; }
   .reset { margin-top:14px; }
-  .reset button { padding:9px 18px; border:0; border-radius:6px; background:var(--accent); color:#fff; cursor:pointer; font-size:14px; }
+  .reset button { padding:9px 18px; border:0; border-radius:8px; background:var(--accent); color:#fff; cursor:pointer; font-size:14px; }
   .reset button:hover { background:var(--accent-dark); }
-  @media (max-width:900px) { .rooms { grid-template-columns:repeat(2, 1fr); } }
+
+  @media (max-width:1000px) {
+    .layout { grid-template-columns:1fr; } .side { position:static; height:auto; } .side small { display:none; }
+    .cards, .grid2 { grid-template-columns:1fr; }
+  }
 </style>
 </head>
 <body>
-<div class="wm">SJCIT</div>
-<header>
-  <h1>CampusBuddy: SJCIT Energy Dashboard</h1>
-  <p>AI occupancy-based energy saver. Live status of SJCIT buildings (camera on IT Block, other blocks simulated).</p>
-  <div class="nav"><a href="/static/leaderboard.html">Greenest Block</a><a href="/static/copilot.html">Admin Copilot</a></div>
-</header>
-<main>
-  <div class="counters">
-    <div class="counter"><b id="kwh">0.000</b>kWh saved (simulated)</div>
-    <div class="counter"><b id="rs">0.00</b>rupees saved (simulated)</div>
+<div class="layout">
+  <nav class="side">
+    <div class="logo"><i>CB</i><b>CampusBuddy<span>SJCIT</span></b></div>
+    <a href="/">Home</a>
+    <a class="on" href="/static/index.html">Dashboard</a>
+    <a href="/static/leaderboard.html">Greenest Block</a>
+    <a href="/static/copilot.html">AI Copilot</a>
+    <a href="/static/inbox.html">Inbox</a>
+    <a href="/static/student.html">Campus Guide</a>
+    <small>Camera live on one IT Block room. Other blocks and all savings are simulated estimates.</small>
+  </nav>
+
+  <div class="content">
+    <div class="top">
+      <div><h1>Energy Dashboard</h1><p>Live occupancy and energy savings across SJCIT blocks</p></div>
+      <div class="live">Live</div>
+    </div>
+
+    <div class="cards">
+      <div class="card hero">
+        <h4>Energy saved (simulated)</h4>
+        <div class="big"><span id="kwh">0.000</span> kWh</div>
+        <div class="sub">Rs <span id="rs">0.00</span> saved at Rs <span id="tariff">8</span> per kWh</div>
+        <svg viewBox="0 0 300 70" preserveAspectRatio="none"><polyline id="spark" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" points="0,60 300,60"/></svg>
+      </div>
+      <div class="card">
+        <h4>Occupied blocks</h4>
+        <div class="donutwrap">
+          <div class="donut" id="donut"><div id="donutN">0/5</div></div>
+          <div class="row"><span>People on campus</span><br><b style="font-size:26px" id="people">0</b></div>
+        </div>
+      </div>
+      <div class="card stack">
+        <h4>Blocks switched off</h4>
+        <div class="big" id="off">0</div>
+        <div class="mini"><h4>Empty, lights on</h4><b id="wasting">0</b></div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h2>Campus buildings</h2>
+        <p class="note" id="cfg"></p>
+        <div class="rooms" id="rooms"></div>
+        <p class="note" style="margin-top:12px">Green: occupied. Red: empty with lights on. Amber: warning, switch-off soon. Grey: switched off by the system.</p>
+        <div class="reset"><button onclick="post('/api/reset')">Reset demo</button></div>
+      </div>
+      <div class="card events">
+        <h2>Event log</h2>
+        <ul id="events"></ul>
+      </div>
+    </div>
   </div>
-  <div class="floor">
-    <h2>Campus buildings: live status</h2>
-    <p class="note" id="cfg"></p>
-    <div class="rooms" id="rooms"></div>
-    <div class="corridor"></div>
-    <p class="note">Green: occupied. Red: empty with lights on. Amber: warning, switch-off soon. Grey: switched off by the system.</p>
-  </div>
-  <div class="events"><h2>Event log</h2><ul id="events"></ul></div>
-  <div class="reset"><button onclick="post('/api/reset')">Reset demo</button></div>
-</main>
+</div>
 <script>
 const LABEL = {
   occupied: "Occupied",
   empty_lights_on: "Empty, lights on",
   warning: "Warning: switching off soon",
-  switched_off: "Switched off (saving power)"
+  switched_off: "Switched off"
 };
+const history = [];
 
 async function post(url, body) {
   await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
   refresh();
 }
 
+function spark() {
+  const w = 300, h = 70, n = history.length;
+  if (n < 2) return;
+  const min = Math.min(...history), max = Math.max(...history), span = (max - min) || 1;
+  const pts = history.map((v, i) => `${(i / (n - 1)) * w},${h - 8 - ((v - min) / span) * (h - 16)}`).join(" ");
+  document.getElementById("spark").setAttribute("points", pts);
+}
+
 function render(s) {
+  history.push(s.saved_kwh); if (history.length > 60) history.shift();
+  spark();
   document.getElementById("kwh").textContent = s.saved_kwh.toFixed(3);
   document.getElementById("rs").textContent = s.saved_rupees.toFixed(2);
+  document.getElementById("tariff").textContent = s.config.tariff;
   document.getElementById("cfg").textContent =
-    `Demo timing: warning after ${s.config.warn_after}s empty, auto switch-off after ${s.config.off_after}s. ` +
-    `Savings run at 1 second = ${s.config.time_scale} seconds, at Rs ${s.config.tariff} per kWh.`;
+    `Demo timing: warning after ${s.config.warn_after}s empty, auto switch-off after ${s.config.off_after}s. 1 second = ${s.config.time_scale} seconds.`;
+
+  const total = s.rooms.length;
+  const occ = s.rooms.filter(r => r.status === "occupied").length;
+  const pct = total ? Math.round((occ / total) * 100) : 0;
+  document.getElementById("donut").style.background = `conic-gradient(var(--green) ${pct}%, #EFE3D5 0)`;
+  document.getElementById("donutN").textContent = `${occ}/${total}`;
+  document.getElementById("people").textContent = s.rooms.reduce((a, r) => a + r.persons, 0);
+  document.getElementById("off").textContent = s.rooms.filter(r => r.status === "switched_off").length;
+  document.getElementById("wasting").textContent = s.rooms.filter(r => r.status === "empty_lights_on" || r.status === "warning").length;
+
   document.getElementById("rooms").innerHTML = s.rooms.map(r => `
     <div class="room ${r.status}">
       <h3>${r.name}</h3>
-      <div class="st">${LABEL[r.status]}<br>People: ${r.persons}<br>Lights: ${r.lights_on ? "ON" : "OFF"}${r.persons === 0 && r.lights_on ? `<br>Empty for ${Math.round(r.empty_for)}s` : ""}</div>
+      <span class="pill ${r.status}">${LABEL[r.status]}</span>
+      <div class="row"><span>People:</span> ${r.persons}<br><span>Lights:</span> ${r.lights_on ? "ON" : "OFF"}${r.persons === 0 && r.lights_on ? `<br><span>Empty for</span> ${Math.round(r.empty_for)}s` : ""}<br><span>Saved:</span> ${r.saved_kwh.toFixed(3)} kWh</div>
       <div class="btns">
         <button onclick="post('/api/rooms/${r.id}/occupancy', {persons: ${r.persons + 1}})">+ Person</button>
         <button onclick="post('/api/rooms/${r.id}/occupancy', {persons: 0})">Everyone leaves</button>
-        <button onclick="post('/api/rooms/${r.id}/lights', {on: ${!r.lights_on}})">Turn lights ${r.lights_on ? "off" : "on"}</button>
+        <button onclick="post('/api/rooms/${r.id}/lights', {on: ${!r.lights_on}})">Lights ${r.lights_on ? "off" : "on"}</button>
       </div>
     </div>`).join("");
   document.getElementById("events").innerHTML =
@@ -121,6 +194,5 @@ async function refresh() {
 refresh();
 setInterval(refresh, 1000);
 </script>
-<script src="/static/nav.js"></script>
 </body>
 </html>
