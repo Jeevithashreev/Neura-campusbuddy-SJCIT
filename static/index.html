@@ -52,7 +52,7 @@
 <header>
   <h1>CampusBuddy: SJCIT energy twin</h1>
   <p>AI occupancy-based energy saver: live status of SJCIT buildings (camera on IT Block, other blocks simulated)</p>
-  <p><a href="/static/map.html">Satellite map</a><a href="/static/leaderboard.html">Greenest Block</a><a href="/static/copilot.html">Admin Copilot</a></p>
+  <p><a href="/static/leaderboard.html">Greenest Block</a><a href="/static/copilot.html">Admin Copilot</a></p>
 </header>
 <main>
   <div class="counters">
@@ -91,11 +91,11 @@ function render(s) {
   document.getElementById("rooms").innerHTML = s.rooms.map(r => `
     <div class="room ${r.status}">
       <h3>${r.name}</h3>
-      <div class="st">${LABEL[r.status]}<br>People: ${r.persons}${r.persons === 0 && r.lights_on ? `<br>Empty for ${Math.round(r.empty_for)}s` : ""}</div>
+      <div class="st">${LABEL[r.status]}<br>People: ${r.persons}<br>Lights: ${r.lights_on ? "ON 💡" : "OFF"}${r.persons === 0 && r.lights_on ? `<br>Empty for ${Math.round(r.empty_for)}s` : ""}</div>
       <div class="btns">
         <button onclick="post('/api/rooms/${r.id}/occupancy', {persons: ${r.persons + 1}})">+ Person</button>
         <button onclick="post('/api/rooms/${r.id}/occupancy', {persons: 0})">Everyone leaves</button>
-        <button onclick="post('/api/rooms/${r.id}/lights', {on: ${!r.lights_on}})">Lights ${r.lights_on ? "off" : "on"}</button>
+        <button onclick="post('/api/rooms/${r.id}/lights', {on: ${!r.lights_on}})">Turn lights ${r.lights_on ? "off" : "on"}</button>
       </div>
     </div>`).join("");
   document.getElementById("events").innerHTML =
