@@ -1,4 +1,4 @@
-/* CampusBuddy shared menu: a floating Menu button on every page.
+/* CampusBuddy shared menu: a floating Menu button.
    To add a new page to the app, add one line to LINKS below. */
 (function () {
   if (document.getElementById("cb-menu")) return;
@@ -8,11 +8,9 @@
     ["Events", "/static/events.html"],
     ["Find a place", "/static/student.html"],
     ["Report a problem", "/static/report.html"],
-    ["Campus map", "/static/map.html"],
     ["ADMIN MODE"],
-    ["Dashboard", "/static/admin.html"],
+    ["Dashboard", "/static/index.html"],
     ["Greenest Block", "/static/leaderboard.html"],
-    ["Floor view", "/static/index.html"],
     ["AI copilot", "/static/copilot.html"],
     ["Inbox", "/static/inbox.html"]
   ];
@@ -20,14 +18,14 @@
   var btn = document.createElement("button");
   btn.id = "cb-menu";
   btn.textContent = "Menu";
-  btn.style.cssText = "position:fixed;top:10px;right:10px;z-index:100000;padding:8px 14px;border:0;" +
-    "border-radius:20px;background:#0f3d2e;color:#fff;font:bold 14px Calibri,Segoe UI,sans-serif;" +
-    "cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.4)";
+  btn.style.cssText = "position:fixed;top:12px;right:12px;z-index:100000;padding:9px 18px;border:0;" +
+    "border-radius:20px;background:#E07B39;color:#fff;font:bold 14px Calibri,Segoe UI,sans-serif;" +
+    "cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.35)";
 
   var panel = document.createElement("div");
-  panel.style.cssText = "position:fixed;top:50px;right:10px;z-index:100000;background:#fff;border-radius:12px;" +
-    "padding:8px 0;min-width:190px;box-shadow:0 4px 14px rgba(0,0,0,.4);display:none;" +
-    "font:14px Calibri,Segoe UI,sans-serif";
+  panel.style.cssText = "position:fixed;top:54px;right:12px;z-index:100000;background:#fff;border-radius:14px;" +
+    "padding:8px 0;min-width:200px;box-shadow:0 4px 16px rgba(0,0,0,.35);display:none;" +
+    "font:15px Calibri,Segoe UI,sans-serif";
   panel.style.display = "none";
 
   var here = location.pathname;
@@ -35,7 +33,7 @@
     if (!item[1]) {
       var h = document.createElement("div");
       h.textContent = item[0];
-      h.style.cssText = "padding:8px 16px 2px;font-size:11px;font-weight:bold;color:#5b6b63;letter-spacing:1px";
+      h.style.cssText = "padding:9px 18px 3px;font-size:11px;font-weight:bold;color:#8A7B6E;letter-spacing:1px";
       panel.appendChild(h);
       return;
     }
@@ -43,8 +41,8 @@
     a.textContent = item[0];
     a.href = item[1];
     var current = here === item[1];
-    a.style.cssText = "display:block;padding:7px 16px;text-decoration:none;color:#1b2b24;" +
-      (current ? "background:#eaf4ec;font-weight:bold;" : "");
+    a.style.cssText = "display:block;padding:8px 18px;text-decoration:none;color:#2F2A26;" +
+      (current ? "background:#FBE3CF;font-weight:bold;" : "");
     panel.appendChild(a);
   });
 
