@@ -5,7 +5,7 @@
   var LINKS = [
     ["Home", "/"],
     ["STUDENT MODE"],
-    ["Events", "/static/events.html"],
+    ["Events", "/static/register.html"],
     ["Find a place", "/static/student.html"],
     ["Report a problem", "/static/report.html"],
     ["ADMIN MODE"],
