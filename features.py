@@ -205,3 +205,15 @@ def admin_inbox():
         events.append(v)
     reports = sorted(DATA["reports"], key=lambda r: (r["status"] != "open", -r["ts"]))
     return {"events": events, "reports": reports}
+
+
+
+@router.delete("/api/events/{event_id}")
+def delete_event(event_id: int):
+    _find_event(event_id)
+    with LOCK:
+        DATA["events"][:] = [e for e in DATA["events"] if e["id"] != event_id]
+        DATA["registrations"][:] = [r for r in DATA["registrations"] if r["event_id"] != event_id]
+        DATA["feedback"][:] = [f for f in DATA["feedback"] if f["event_id"] != event_id]
+        _save(DATA)
+    return {"ok": True}
