@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CampusBuddy: Create an event</title>
+<style>
+  :root { --accent:#E07B39; --accent2:#F4A261; --dark:#B85C1E; --soft:#FBE3CF; --bg:#F6EFE7;
+          --line:#EADBCB; --ink:#2F2A26; --muted:#8A7B6E; --side:#2B1D14; --green:#4E8F66; --red:#C0584A; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:Calibri,"Segoe UI",Arial,sans-serif; background:var(--bg); color:var(--ink); }
+  header { background:linear-gradient(135deg,var(--side),#4A3322); color:#fff; padding:26px 24px 44px; }
+  header h1 { margin:0; font-size:28px; font-weight:600; }
+  header p { margin:6px 0 0; color:#E3D3C1; }
+  main { max-width:620px; margin:-24px auto 30px; padding:0 16px; }
+  .card { background:#fff; border-radius:18px; padding:22px 24px; box-shadow:0 2px 10px rgba(120,70,20,.1); }
+  label { display:block; font-size:13px; color:var(--muted); margin:14px 0 5px; }
+  input { width:100%; padding:13px 16px; border-radius:14px; border:1px solid var(--line); font-size:15px; outline:none; }
+  input:focus { border-color:var(--accent); }
+  .two { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  button { margin-top:20px; padding:13px 30px; border:0; border-radius:24px; cursor:pointer; color:#fff; font-size:16px; font-weight:700;
+           background:linear-gradient(135deg,var(--accent),var(--accent2)); }
+  button:hover { opacity:.92; }
+  #msg { margin-top:14px; font-weight:600; font-size:15px; }
+  .ok { color:var(--green); } .bad { color:var(--red); }
+  a { color:var(--dark); font-weight:600; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Create an event</h1>
+  <p>Admin only. The event appears on the registration page for students.</p>
+</header>
+<main>
+  <div class="card">
+    <label>Title</label>
+    <input id="t" type="text" value="Hackathon demo">
+    <label>Place</label>
+    <input id="p" type="text" value="Gradient Hall, IT Block">
+    <div class="two">
+      <div><label>Starts in (minutes)</label><input id="s" type="number" value="0" min="0"></div>
+      <div><label>Duration (minutes)</label><input id="d" type="number" value="120" min="1"></div>
+    </div>
+    <label>Description</label>
+    <input id="desc" type="text" value="Register with your email.">
+    <button id="go" type="button">Create event</button>
+    <div id="msg"></div>
+  </div>
+</main>
+<script>
+document.getElementById("go").addEventListener("click", function () {
+  var out = document.getElementById("msg");
+  out.className = ""; out.textContent = "Creating...";
+  fetch("/api/events", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      title: document.getElementById("t").value,
+      place: document.getElementById("p").value,
+      start_in_min: parseFloat(document.getElementById("s").value) || 0,
+      duration_min: parseInt(document.getElementById("d").value) || 30,
+      description: document.getElementById("desc").value
+    })
+  }).then(function (r) {
+    return r.json().catch(function () { return {}; }).then(function (d) {
+      if (!r.ok) throw new Error(d.detail ? JSON.stringify(d.detail) : "Could not create the event");
+      out.className = "ok";
+      out.innerHTML = "Event created. <a href='/static/register.html'>Open the registration page</a>";
+    });
+  }).catch(function (e) { out.className = "bad"; out.textContent = e.message; });
+});
+</script>
+<script src="/static/nav.js"></script>
+</body>
+</html>
