@@ -5,54 +5,67 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CampusBuddy: SJCIT</title>
 <style>
-  :root { --bg:#0f3d2e; --card:#ffffff; --ink:#1b2b24; --muted:#5b6b63;
-          --green:#1f8a5b; --red:#c8553d; --amber:#f2b33d; --grey:#5b6b63; }
+  :root { --accent:#E07B39; --accent-dark:#B85C1E; --accent-soft:#FBE3CF;
+          --cream:#FFF8F0; --line:#EBD8C4; --ink:#2F2A26; --muted:#7C6F64;
+          --green:#4E8F66; --red:#C0584A; --amber:#D9A441; --grey:#8C8279; }
   * { box-sizing: border-box; }
-  body { margin:0; font-family: Calibri, "Segoe UI", sans-serif; background:#eaf4ec; color:var(--ink); }
-  header { background:linear-gradient(135deg,#0f3d2e,#1f8a5b); color:#fff; padding:22px 28px; }
-  header h1 { margin:0; font-size:30px; letter-spacing:.3px; }
-  header p { margin:6px 0 0; color:#eaf4ec; font-size:15px; }
-  header a { color:#fff; font-weight:bold; text-decoration:none; background:rgba(255,255,255,.18);
-             padding:5px 12px; border-radius:14px; margin-right:6px; display:inline-block; }
-  header a:hover { background:rgba(255,255,255,.32); }
+  body { margin:0; font-family: Calibri, "Segoe UI", Arial, sans-serif; background:var(--cream); color:var(--ink); }
+
+  /* faint SJCIT text watermark (delete the .wm block and the <div class="wm"> line to remove) */
+  .wm { position:fixed; inset:0; z-index:0; pointer-events:none; display:flex; align-items:center;
+        justify-content:center; font-size:min(22vw, 260px); font-weight:bold; letter-spacing:.08em;
+        color:var(--accent); opacity:.05; user-select:none; }
+  header, main { position:relative; z-index:1; }
+
+  header { background:var(--accent-soft); border-bottom:1px solid var(--line); padding:22px 28px; }
+  header h1 { margin:0; font-size:26px; font-weight:600; color:var(--accent-dark); }
+  header p { margin:6px 0 0; color:var(--muted); font-size:15px; }
+  .nav { margin-top:12px; }
+  .nav a { color:var(--accent-dark); font-weight:600; font-size:14px; text-decoration:none; background:#fff;
+           border:1px solid var(--line); padding:6px 14px; border-radius:6px; margin-right:8px; display:inline-block; }
+  .nav a:hover { background:var(--accent-soft); }
+
   main { max-width:1150px; margin:22px auto; padding:0 16px; }
   .counters { display:flex; gap:16px; margin-bottom:18px; flex-wrap:wrap; }
-  .counter { background:var(--card); border-radius:14px; padding:18px 26px; min-width:250px;
-             box-shadow:0 2px 8px rgba(0,0,0,.12); font-size:15px; color:var(--muted); }
-  .counter b { display:block; font-size:44px; color:var(--green); line-height:1.1; }
-  .floor { background:var(--card); border-radius:14px; padding:18px; box-shadow:0 2px 8px rgba(0,0,0,.12); }
-  .floor h2 { margin:0 0 4px; font-size:21px; }
+  .counter { background:#fff; border:1px solid var(--line); border-left:4px solid var(--accent); border-radius:8px;
+             padding:16px 26px; min-width:250px; font-size:14px; color:var(--muted); }
+  .counter b { display:block; font-size:36px; font-weight:600; color:var(--accent-dark); line-height:1.15; }
+
+  .floor, .events { background:#fff; border:1px solid var(--line); border-radius:8px; padding:18px; }
+  .events { margin-top:18px; }
+  .floor h2, .events h2 { margin:0 0 4px; font-size:19px; font-weight:600; color:var(--ink); }
   .note { color:var(--muted); font-size:13px; margin:0 0 12px; }
+
   .rooms { display:grid; grid-template-columns:repeat(5, 1fr); gap:12px; }
-  .room { border-radius:12px; color:#fff; padding:14px; min-height:175px; display:flex; flex-direction:column;
-          box-shadow:0 2px 6px rgba(0,0,0,.2); transition:background .4s, transform .2s; }
-  .room:hover { transform:translateY(-3px); }
-  .room h3 { margin:0 0 6px; font-size:18px; }
-  .room .st { font-size:14px; flex:1; line-height:1.5; }
+  .room { border-radius:8px; color:#fff; padding:14px; min-height:180px; display:flex; flex-direction:column;
+          transition:background .4s; }
+  .room h3 { margin:0 0 6px; font-size:17px; font-weight:600; }
+  .room .st { font-size:14px; flex:1; line-height:1.6; }
   .room .btns { display:flex; gap:6px; flex-wrap:wrap; }
-  .room button { border:0; border-radius:6px; padding:6px 9px; font-size:12px; cursor:pointer;
-                 background:rgba(255,255,255,.9); color:#1b2b24; }
+  .room button { border:0; border-radius:5px; padding:6px 9px; font-size:12px; cursor:pointer;
+                 background:rgba(255,255,255,.92); color:var(--ink); }
   .room button:hover { background:#fff; }
   .occupied { background:var(--green); }
   .empty_lights_on { background:var(--red); }
   .warning { background:var(--amber); color:var(--ink); }
   .switched_off { background:var(--grey); }
-  .corridor { height:10px; background:#eaf4ec; border-radius:7px; margin:14px 0; }
-  .events { background:var(--card); border-radius:14px; padding:18px; margin-top:18px; box-shadow:0 2px 8px rgba(0,0,0,.12); }
-  .events h2 { margin:0 0 8px; font-size:21px; }
-  .events ul { max-height:220px; overflow:auto; padding-left:20px; }
+  .corridor { height:6px; background:var(--accent-soft); border-radius:3px; margin:14px 0; }
+
+  .events ul { max-height:220px; overflow:auto; padding-left:20px; margin:8px 0 0; }
   .events li { font-size:14px; margin:4px 0; }
   .events span { color:var(--muted); margin-right:8px; }
   .reset { margin-top:14px; }
-  .reset button { padding:10px 16px; border:0; border-radius:8px; background:var(--bg); color:#fff; cursor:pointer; }
+  .reset button { padding:9px 18px; border:0; border-radius:6px; background:var(--accent); color:#fff; cursor:pointer; font-size:14px; }
+  .reset button:hover { background:var(--accent-dark); }
   @media (max-width:900px) { .rooms { grid-template-columns:repeat(2, 1fr); } }
 </style>
 </head>
 <body>
+<div class="wm">SJCIT</div>
 <header>
-  <h1>CampusBuddy: SJCIT energy twin</h1>
-  <p>AI occupancy-based energy saver: live status of SJCIT buildings (camera on IT Block, other blocks simulated)</p>
-  <p><a href="/static/leaderboard.html">Greenest Block</a><a href="/static/copilot.html">Admin Copilot</a></p>
+  <h1>CampusBuddy: SJCIT Energy Dashboard</h1>
+  <p>AI occupancy-based energy saver. Live status of SJCIT buildings (camera on IT Block, other blocks simulated).</p>
+  <div class="nav"><a href="/static/leaderboard.html">Greenest Block</a><a href="/static/copilot.html">Admin Copilot</a></div>
 </header>
 <main>
   <div class="counters">
@@ -71,10 +84,10 @@
 </main>
 <script>
 const LABEL = {
-  occupied: "✅ Occupied",
-  empty_lights_on: "💡 Empty, lights on",
-  warning: "⚠️ Warning: switching off soon",
-  switched_off: "🌱 Switched off (saving power)"
+  occupied: "Occupied",
+  empty_lights_on: "Empty, lights on",
+  warning: "Warning: switching off soon",
+  switched_off: "Switched off (saving power)"
 };
 
 async function post(url, body) {
@@ -91,7 +104,7 @@ function render(s) {
   document.getElementById("rooms").innerHTML = s.rooms.map(r => `
     <div class="room ${r.status}">
       <h3>${r.name}</h3>
-      <div class="st">${LABEL[r.status]}<br>People: ${r.persons}<br>Lights: ${r.lights_on ? "ON 💡" : "OFF"}${r.persons === 0 && r.lights_on ? `<br>Empty for ${Math.round(r.empty_for)}s` : ""}</div>
+      <div class="st">${LABEL[r.status]}<br>People: ${r.persons}<br>Lights: ${r.lights_on ? "ON" : "OFF"}${r.persons === 0 && r.lights_on ? `<br>Empty for ${Math.round(r.empty_for)}s` : ""}</div>
       <div class="btns">
         <button onclick="post('/api/rooms/${r.id}/occupancy', {persons: ${r.persons + 1}})">+ Person</button>
         <button onclick="post('/api/rooms/${r.id}/occupancy', {persons: 0})">Everyone leaves</button>
