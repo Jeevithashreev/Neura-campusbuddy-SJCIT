@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CampusBuddy: Events and Registration</title>
+<style>
+  :root { --accent:#E07B39; --accent2:#F4A261; --dark:#B85C1E; --soft:#FBE3CF; --bg:#F6EFE7;
+          --line:#EADBCB; --ink:#2F2A26; --muted:#8A7B6E; --side:#2B1D14; --green:#4E8F66; --red:#C0584A; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:Calibri,"Segoe UI",Arial,sans-serif; background:var(--bg); color:var(--ink); }
+  header { background:linear-gradient(135deg,var(--side),#4A3322); color:#fff; padding:26px 24px 40px; }
+  header h1 { margin:0; font-size:28px; font-weight:600; }
+  header p { margin:6px 0 0; color:#E3D3C1; }
+  header a { color:#F4A261; text-decoration:none; font-weight:600; }
+  main { max-width:820px; margin:-22px auto 30px; padding:0 16px; }
+  .card { background:#fff; border-radius:18px; padding:20px 22px; margin-bottom:16px; box-shadow:0 2px 10px rgba(120,70,20,.1); }
+  .card h2 { margin:0; font-size:22px; font-weight:600; }
+  .meta { color:var(--muted); font-size:14px; margin:6px 0; }
+  .desc { margin:8px 0; font-size:15px; }
+  .tag { display:inline-block; border-radius:10px; padding:3px 11px; font-size:12px; font-weight:700; color:#fff; background:var(--green); margin-left:8px; vertical-align:middle; }
+  .tag.live { background:var(--red); } .tag.ended { background:#8C8279; }
+  .count { display:inline-block; background:var(--soft); color:var(--dark); font-weight:700; border-radius:14px; padding:5px 14px; margin:6px 0; }
+  .window { color:var(--green); font-weight:600; font-size:14px; }
+  .window.closed { color:var(--muted); }
+  .reg { margin-top:12px; padding-top:12px; border-top:1px solid var(--line); display:flex; flex-wrap:wrap; gap:10px; }
+  .reg input { flex:1; min-width:180px; padding:12px 16px; border-radius:22px; border:1px solid var(--line); font-size:15px; outline:none; }
+  .reg input:focus { border-color:var(--accent); }
+  .btn { padding:12px 26px; border:0; border-radius:22px; cursor:pointer; color:#fff; font-size:15px; font-weight:700;
+         background:linear-gradient(135deg,var(--accent),var(--accent2)); }
+  .btn:hover { opacity:.92; }
+  .msg { width:100%; font-size:14px; font-weight:600; }
+  .msg.ok { color:var(--green); } .msg.bad { color:var(--red); }
+  .empty { text-align:center; color:var(--muted); padding:30px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Events on campus</h1>
+  <p>Register with just your email. No Google Form or scanner needed. <a href="/static/events.html">Give feedback on past events</a></p>
+</header>
+<main id="list"><div class="card empty">Loading events...</div></main>
+<script src="/static/register.js"></script>
+<script src="/static/nav.js"></script>
+</body>
+</html>

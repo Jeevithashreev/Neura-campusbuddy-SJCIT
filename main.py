@@ -105,5 +105,9 @@ def copilot(body: Question):
         return {"answer": fallback_answer(state), "source": "backup (AI offline)"}
     return {"answer": answer, "source": "Gemini"}
 
+
 import features
 app.include_router(features.router)
+
+from register import router as signups_router
+app.include_router(signups_router)
